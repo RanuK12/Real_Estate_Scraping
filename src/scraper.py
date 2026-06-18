@@ -174,18 +174,95 @@ class BaseScraper(ABC):
 
 
 # ======================================================================
-# Example concrete subclass (placeholder)
+# Concrete subclass for real‑estate property scraping
 # ======================================================================
 class RealEstateScraper(BaseScraper):
     """
-    Placeholder scraper for a real‑estate site.
+    Scraper for a real‑estate site that can extract property details
+    from individual listing pages.
 
-    Override :meth:`scrape` with the actual logic for the target website.
+    Parameters
+    ----------
+    base_url : str
+        The root URL of the site being scraped.
+    selectors : dict or None
+        CSS selectors used to locate the title, price, and location
+        elements on a property page.  If None, sensible defaults are used.
+    **kwargs
+        Additional keyword arguments forwarded to :class:`BaseScraper`.
     """
 
-    def __init__(self, base_url: str, **kwargs: Any) -> None:
-        super().__init__(base_url, **kwargs)
+    DEFAULT_SELECTORS = {
+        "title": "h1.property-title",
+        "price": "span.price",
+        "location": "span.location",
+    }
 
+    def __init__(
+        self,
+        base_url: str,
+        selectors: Optional[Dict[str, str]] = None,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(base_url, **kwargs)
+        self.selectors = selectors or self.DEFAULT_SELECTORS.copy()
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+    def scrape_property(self, property_url: str) -> Dict[str, Optional[str]]:
+        """
+        Fetch a property listing page and extract its title, price, and
+        location.
+
+        Parameters
+        ----------
+        property_url : str
+            Full URL of the property listing page.
+
+        Returns
+        -------
+        dict
+            A dictionary with keys ``title``, ``price``, and ``location``.
+            Any value that cannot be found will be ``None``.
+        """
+        self.logger.info("Scraping property at %s", property_url)
+
+        try:
+            response = self._fetch(property_url)
+        except requests.exceptions.RequestException as exc:
+            self.logger.error("Failed to fetch property page: %s", exc)
+            return {"title": None, "price": None, "location": None}
+
+        soup = self._parse(response.text)
+
+        title = self._extract_text(soup, self.selectors["title"])
+        price = self._extract_text(soup, self.selectors["price"])
+        location = self._extract_text(soup, self.selectors["location"])
+
+        self.logger.info(
+            "Extracted – title: %s, price: %s, location: %s",
+            title,
+            price,
+            location,
+        )
+        return {"title": title, "price": price, "location": location}
+
+    # ------------------------------------------------------------------
+    # Helper
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _extract_text(soup: BeautifulSoup, selector: str) -> Optional[str]:
+        """Return the stripped text of the first element matching *selector*,
+        or ``None`` if no element is found."""
+        element = soup.select_one(selector)
+        if element is None:
+            return None
+        return element.get_text(strip=True)
+
+    # ------------------------------------------------------------------
+    # Backward‑compatible scrape method (optional)
+    # ------------------------------------------------------------------
     def scrape(self) -> None:
         """
         Example implementation: fetch the homepage and log the title.
