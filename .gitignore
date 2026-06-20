@@ -1,4 +1,27 @@
-.aider*
-src/__pycache__/
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+.pytest_cache/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+
+# Data
+data/
+*.csv
+*.json
+
+# Environment
+.env
+.venv/
+venv/
+
+# OS
+.DS_Store
+Thumbs.db
