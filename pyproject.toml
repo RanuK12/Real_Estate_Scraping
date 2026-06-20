@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "real-estate-scraping"
+version = "0.2.0"
+description = "Robust real‑estate scraper with proxy rotation, stealth fallback, and multi‑source support."
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Emilio Ranucoli", email = "ranucoliemilio@gmail.com"},
+]
+requires-python = ">=3.10"
+dependencies = [
+    "requests>=2.31.0",
+    "beautifulsoup4>=4.12.0",
+]
+optional-dependencies = {
+    "stealth": ["rk-stealth-browse"],
+    "dev": ["pytest>=8.0.0", "reportlab", "PyPDF2"],
+}
+
+[project.urls]
+Homepage = "https://github.com/RanuK12/real_estate_scraping"
+Repository = "https://github.com/RanuK12/real_estate_scraping"
+
+[project.scripts]
+real-estate-scraper = "src.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["src*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
