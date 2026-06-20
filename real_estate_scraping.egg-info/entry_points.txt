@@ -1,0 +1,2 @@
+[console_scripts]
+real-estate-scraper = src.cli:main

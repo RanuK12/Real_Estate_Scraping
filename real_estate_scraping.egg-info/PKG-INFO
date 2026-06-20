@@ -1,0 +1,146 @@
+Metadata-Version: 2.4
+Name: real-estate-scraping
+Version: 0.2.0
+Summary: Robust real‑estate scraper with proxy rotation, stealth fallback, and multi‑source support.
+Author-email: Emilio Ranucoli <ranucoliemilio@gmail.com>
+License: MIT
+Project-URL: Homepage, https://github.com/RanuK12/real_estate_scraping
+Project-URL: Repository, https://github.com/RanuK12/real_estate_scraping
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: requests>=2.31.0
+Requires-Dist: beautifulsoup4>=4.12.0
+Provides-Extra: stealth
+Requires-Dist: rk-stealth-browse; extra == "stealth"
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0.0; extra == "dev"
+Requires-Dist: reportlab; extra == "dev"
+Requires-Dist: PyPDF2; extra == "dev"
+
+# Real‑Estate Scraping
+
+> Scraper robusto de propiedades con rotación de proxies, fallback stealth, y soporte multi‑fuente.  
+> Hecho por [Ranuk IT Solutions](https://ranuk.dev).
+
+---
+
+## Características
+
+- **Multi‑fuente**: Zonaprop (CABA) y MercadoLibre (Uruguay) listos para usar.
+- **Proxy rotation**: evita bloqueos rotando proxies automáticamente.
+- **Stealth fallback**: cuando el request HTTP falla, usa `rk-stealth-browse` (Camofox) como plan B.
+- **Exportación**: CSV y JSON con campos normalizados (title, price, price_per_m2, m2, location, bedrooms, bathrooms, source, url, scraped_at).
+- **CLI**: interfaz de línea de comandos para scrapear sin escribir código.
+- **Extensible**: heredá de `BaseScraper` para agregar tu propia fuente.
+
+---
+
+## Instalación
+
+```bash
+# Clonar
+git clone https://github.com/RanuK12/real_estate_scraping.git
+cd real_estate_scraping
+
+# Instalar en modo editable (recomendado)
+pip install -e .
+
+# Con soporte stealth (Camofox)
+pip install -e ".[stealth]"
+
+# Para desarrollo (tests + reportes)
+pip install -e ".[dev]"
+```
+
+## Uso CLI
+
+```bash
+# Scrapear Zonaprop CABA
+real-estate-scraper --source zonaprop --zone CABA
+
+# Scrapear MercadoLibre Uruguay
+real-estate-scraper --source mercadolibre --zone Uruguay
+
+# Exportar a JSON
+real-estate-scraper --source zonaprop --format json --output data/
+
+# Con proxy propio
+real-estate-scraper --source zonaprop --proxy http://user:pass@host:port
+```
+
+## Uso como librería
+
+```python
+from src.scraper import RealEstateScraper
+
+scraper = RealEstateScraper(
+    use_stealth=True,          # fallback a Camofox si falla HTTP
+    proxy_list=["http://..."], # proxies opcionales
+)
+
+# Scrapear propiedades
+listings = scraper.scrape_real("zonaprop", zone="CABA")
+
+# Exportar resultados
+scraper.export_data(listings, "csv", "data/")
+scraper.export_data(listings, "json", "data/")
+
+# También podés scrapear una propiedad individual
+prop = scraper.scrape_property("prop-123")
+print(prop["title"], prop["price"], prop["location"])
+```
+
+## API
+
+### `RealEstateScraper(base_url, timeout, max_retries, backoff_factor, use_stealth, proxy_list)`
+
+| Parámetro     | Tipo  | Default | Descripción |
+|---------------|-------|---------|-------------|
+| `base_url`    | str   | `""`    | URL base del sitio a scrapear. |
+| `timeout`     | int   | `30`    | Timeout por request (segundos). |
+| `max_retries` | int   | `3`     | Intentos antes de fallar o caer a stealth. |
+| `backoff_factor` | float | `1.0` | Factor de backoff exponencial. |
+| `use_stealth` | bool  | `False` | Usar Camofox como fallback. |
+| `proxy_list`  | list  | `[]`    | Lista de proxies `http://user:pass@host:port`. |
+
+### Métodos principales
+
+- **`fetch(endpoint)`** — GET con retry + proxy rotation + stealth fallback.
+- **`scrape_property(property_id)`** — Scrapea una propiedad individual.
+- **`scrape_real(source, zone)`** — Scrapea listados de una fuente real.
+- **`export_data(data, fmt, output_dir)`** — Exporta a CSV o JSON.
+
+---
+
+## Tests
+
+```bash
+pip install -e ".[dev]"
+pytest -v
+```
+
+Los tests usan `unittest.mock` para simular respuestas HTTP sin depender de sitios reales.
+
+---
+
+## Estructura del proyecto
+
+```
+real_estate_scraping/
+├── src/
+│   ├── __init__.py       # metadatos del paquete
+│   ├── cli.py            # interfaz CLI
+│   └── scraper.py        # scraper principal
+├── tests/
+│   └── test_scraper.py   # tests unitarios
+├── data/                 # exports (gitignored)
+├── logs/                 # logs (gitignored)
+├── pyproject.toml        # build config
+└── README.md
+```
+
+---
+
+## Licencia
+
+MIT — [Ranuk IT Solutions](https://ranuk.dev)
