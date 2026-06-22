@@ -17,6 +17,10 @@ data/
 *.csv
 *.json
 
+# Aider artifacts
+.aider*
+.aider.tags.cache.v4/
+
 # Environment
 .env
 .venv/
