@@ -150,9 +150,10 @@ class RealEstateScraper(BaseScraper):
     def _parse_price(price_str: Optional[str]) -> Optional[float]:
         if not price_str:
             return None
-        # Remove currency symbols, dots, and spaces; keep digits and comma
-        cleaned = price_str.replace("$", "").replace("USD", "").replace("U$S", "").strip()
-        cleaned = cleaned.replace(".", "").replace(",", ".").replace(" ", "")
+        # Remove currency symbols and spaces
+        cleaned = price_str.replace("U$S", "").replace("USD", "").replace("$", "").strip()
+        # Remove all dots and commas (thousands separators) to get plain number
+        cleaned = cleaned.replace(".", "").replace(",", "").replace(" ", "")
         try:
             return float(cleaned)
         except ValueError:
