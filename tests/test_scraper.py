@@ -239,5 +239,293 @@ class TestRealEstateScraper(unittest.TestCase):
             self.scraper.scrape_real(source="invalid_source", zone="CABA")
 
 
+class TestScrapeZonapropMercadoLibre(unittest.TestCase):
+    """Tests for _scrape_zonaprop and _scrape_mercadolibre."""
+
+    def setUp(self) -> None:
+        self.scraper = RealEstateScraper("https://example.com")
+
+    def _mock_fetch(self, html: str) -> MagicMock:
+        mock_resp = MagicMock()
+        mock_resp.text = html
+        mock_resp.raise_for_status.return_value = None
+        return mock_resp
+
+    @patch.object(RealEstateScraper, 'fetch')
+    def test_scrape_zonaprop_parses_correctly(self, mock_fetch: MagicMock) -> None:
+        """_scrape_zonaprop should parse title, price, location, m2, bedrooms, bathrooms."""
+        fake_html = """
+        <html>
+          <body>
+            <div class="postingCard">
+              <h2><a class="title">Beautiful apartment in Palermo</a></h2>
+              <span class="price">U$S 150,000</span>
+              <span class="location">Palermo, CABA</span>
+              <span class="m2">80 m²</span>
+              <span class="bedroom">2 dormitorios</span>
+              <span class="bathroom">1 baño</span>
+            </div>
+          </body>
+        </html>
+        """
+        mock_fetch.return_value = self._mock_fetch(fake_html)
+        result = self.scraper._scrape_zonaprop("CABA")
+        self.assertEqual(len(result), 1)
+        prop = result[0]
+        self.assertEqual(prop["title"], "Beautiful apartment in Palermo")
+        self.assertEqual(prop["price"], "U$S 150,000")
+        self.assertEqual(prop["location"], "Palermo, CABA")
+        self.assertAlmostEqual(prop["m2"], 80.0)
+        self.assertEqual(prop["bedrooms"], "2 dormitorios")
+        self.assertEqual(prop["bathrooms"], "1 baño")
+        self.assertEqual(prop["source"], "zonaprop")
+        self.assertIsNotNone(prop["url"])
+        self.assertIsNotNone(prop["scraped_at"])
+        # price_per_m2 should be computed
+        self.assertAlmostEqual(prop["price_per_m2"], 150000.0 / 80.0)
+
+    @patch.object(RealEstateScraper, 'fetch')
+    def test_scrape_mercadolibre_parses_correctly(self, mock_fetch: MagicMock) -> None:
+        """_scrape_mercadolibre should parse title, price, location, m2, bedrooms, bathrooms."""
+        fake_html = """
+        <html>
+          <body>
+            <li class="ui-search-layout__item">
+              <h2><a class="title">Casa en venta en Punta del Este</a></h2>
+              <span class="price-tag">USD 350,000</span>
+              <span class="location">Punta del Este, Maldonado</span>
+              <span class="m2">120 m²</span>
+              <span class="bedroom">3 dormitorios</span>
+              <span class="bathroom">2 baños</span>
+            </li>
+          </body>
+        </html>
+        """
+        mock_fetch.return_value = self._mock_fetch(fake_html)
+        result = self.scraper._scrape_mercadolibre("Uruguay")
+        self.assertEqual(len(result), 1)
+        prop = result[0]
+        self.assertEqual(prop["title"], "Casa en venta en Punta del Este")
+        self.assertEqual(prop["price"], "USD 350,000")
+        self.assertEqual(prop["location"], "Punta del Este, Maldonado")
+        self.assertAlmostEqual(prop["m2"], 120.0)
+        self.assertEqual(prop["bedrooms"], "3 dormitorios")
+        self.assertEqual(prop["bathrooms"], "2 baños")
+        self.assertEqual(prop["source"], "mercadolibre")
+        self.assertIsNotNone(prop["url"])
+        self.assertIsNotNone(prop["scraped_at"])
+        self.assertAlmostEqual(prop["price_per_m2"], 350000.0 / 120.0)
+
+    @patch.object(RealEstateScraper, 'fetch')
+    def test_scrape_zonaprop_empty_cards(self, mock_fetch: MagicMock) -> None:
+        """_scrape_zonaprop should return empty list when no cards present."""
+        fake_html = "<html><body><div>No cards here</div></body></html>"
+        mock_fetch.return_value = self._mock_fetch(fake_html)
+        result = self.scraper._scrape_zonaprop("CABA")
+        self.assertEqual(result, [])
+
+    @patch.object(RealEstateScraper, 'fetch')
+    def test_scrape_mercadolibre_empty_cards(self, mock_fetch: MagicMock) -> None:
+        """_scrape_mercadolibre should return empty list when no cards present."""
+        fake_html = "<html><body><div>No cards here</div></body></html>"
+        mock_fetch.return_value = self._mock_fetch(fake_html)
+        result = self.scraper._scrape_mercadolibre("Uruguay")
+        self.assertEqual(result, [])
+
+    @patch.object(RealEstateScraper, 'fetch')
+    def test_scrape_zonaprop_malformed_html(self, mock_fetch: MagicMock) -> None:
+        """_scrape_zonaprop should return partial data when some elements missing."""
+        fake_html = """
+        <html>
+          <body>
+            <div class="postingCard">
+              <h2><a class="title">Only title</a></h2>
+              <!-- no price, no location, no m2, no bedrooms, no bathrooms -->
+            </div>
+          </body>
+        </html>
+        """
+        mock_fetch.return_value = self._mock_fetch(fake_html)
+        result = self.scraper._scrape_zonaprop("CABA")
+        self.assertEqual(len(result), 1)
+        prop = result[0]
+        self.assertEqual(prop["title"], "Only title")
+        self.assertIsNone(prop["price"])
+        self.assertIsNone(prop["location"])
+        self.assertIsNone(prop["m2"])
+        self.assertIsNone(prop["bedrooms"])
+        self.assertIsNone(prop["bathrooms"])
+        self.assertIsNone(prop["price_per_m2"])
+
+    @patch.object(RealEstateScraper, 'fetch')
+    def test_scrape_mercadolibre_malformed_html(self, mock_fetch: MagicMock) -> None:
+        """_scrape_mercadolibre should return partial data when some elements missing."""
+        fake_html = """
+        <html>
+          <body>
+            <li class="ui-search-layout__item">
+              <h2><a class="title">Only title</a></h2>
+              <!-- no price, no location, no m2, no bedrooms, no bathrooms -->
+            </li>
+          </body>
+        </html>
+        """
+        mock_fetch.return_value = self._mock_fetch(fake_html)
+        result = self.scraper._scrape_mercadolibre("Uruguay")
+        self.assertEqual(len(result), 1)
+        prop = result[0]
+        self.assertEqual(prop["title"], "Only title")
+        self.assertIsNone(prop["price"])
+        self.assertIsNone(prop["location"])
+        self.assertIsNone(prop["m2"])
+        self.assertIsNone(prop["bedrooms"])
+        self.assertIsNone(prop["bathrooms"])
+        self.assertIsNone(prop["price_per_m2"])
+
+
+class TestScrapeZonapropMercadoLibre(unittest.TestCase):
+    """Tests for _scrape_zonaprop and _scrape_mercadolibre."""
+
+    def setUp(self) -> None:
+        self.scraper = RealEstateScraper("https://example.com")
+
+    def _mock_fetch(self, html: str) -> MagicMock:
+        mock_resp = MagicMock()
+        mock_resp.text = html
+        mock_resp.raise_for_status.return_value = None
+        return mock_resp
+
+    @patch.object(RealEstateScraper, 'fetch')
+    def test_scrape_zonaprop_parses_correctly(self, mock_fetch: MagicMock) -> None:
+        """_scrape_zonaprop should parse title, price, location, m2, bedrooms, bathrooms."""
+        fake_html = """
+        <html>
+          <body>
+            <div class="postingCard">
+              <h2><a class="title">Beautiful apartment in Palermo</a></h2>
+              <span class="price">U$S 150,000</span>
+              <span class="location">Palermo, CABA</span>
+              <span class="m2">80 m²</span>
+              <span class="bedroom">2 dormitorios</span>
+              <span class="bathroom">1 baño</span>
+            </div>
+          </body>
+        </html>
+        """
+        mock_fetch.return_value = self._mock_fetch(fake_html)
+        result = self.scraper._scrape_zonaprop("CABA")
+        self.assertEqual(len(result), 1)
+        prop = result[0]
+        self.assertEqual(prop["title"], "Beautiful apartment in Palermo")
+        self.assertEqual(prop["price"], "U$S 150,000")
+        self.assertEqual(prop["location"], "Palermo, CABA")
+        self.assertAlmostEqual(prop["m2"], 80.0)
+        self.assertEqual(prop["bedrooms"], "2 dormitorios")
+        self.assertEqual(prop["bathrooms"], "1 baño")
+        self.assertEqual(prop["source"], "zonaprop")
+        self.assertIsNotNone(prop["url"])
+        self.assertIsNotNone(prop["scraped_at"])
+        # price_per_m2 should be computed
+        self.assertAlmostEqual(prop["price_per_m2"], 150000.0 / 80.0)
+
+    @patch.object(RealEstateScraper, 'fetch')
+    def test_scrape_mercadolibre_parses_correctly(self, mock_fetch: MagicMock) -> None:
+        """_scrape_mercadolibre should parse title, price, location, m2, bedrooms, bathrooms."""
+        fake_html = """
+        <html>
+          <body>
+            <li class="ui-search-layout__item">
+              <h2><a class="title">Casa en venta en Punta del Este</a></h2>
+              <span class="price-tag">USD 350,000</span>
+              <span class="location">Punta del Este, Maldonado</span>
+              <span class="m2">120 m²</span>
+              <span class="bedroom">3 dormitorios</span>
+              <span class="bathroom">2 baños</span>
+            </li>
+          </body>
+        </html>
+        """
+        mock_fetch.return_value = self._mock_fetch(fake_html)
+        result = self.scraper._scrape_mercadolibre("Uruguay")
+        self.assertEqual(len(result), 1)
+        prop = result[0]
+        self.assertEqual(prop["title"], "Casa en venta en Punta del Este")
+        self.assertEqual(prop["price"], "USD 350,000")
+        self.assertEqual(prop["location"], "Punta del Este, Maldonado")
+        self.assertAlmostEqual(prop["m2"], 120.0)
+        self.assertEqual(prop["bedrooms"], "3 dormitorios")
+        self.assertEqual(prop["bathrooms"], "2 baños")
+        self.assertEqual(prop["source"], "mercadolibre")
+        self.assertIsNotNone(prop["url"])
+        self.assertIsNotNone(prop["scraped_at"])
+        self.assertAlmostEqual(prop["price_per_m2"], 350000.0 / 120.0)
+
+    @patch.object(RealEstateScraper, 'fetch')
+    def test_scrape_zonaprop_empty_cards(self, mock_fetch: MagicMock) -> None:
+        """_scrape_zonaprop should return empty list when no cards present."""
+        fake_html = "<html><body><div>No cards here</div></body></html>"
+        mock_fetch.return_value = self._mock_fetch(fake_html)
+        result = self.scraper._scrape_zonaprop("CABA")
+        self.assertEqual(result, [])
+
+    @patch.object(RealEstateScraper, 'fetch')
+    def test_scrape_mercadolibre_empty_cards(self, mock_fetch: MagicMock) -> None:
+        """_scrape_mercadolibre should return empty list when no cards present."""
+        fake_html = "<html><body><div>No cards here</div></body></html>"
+        mock_fetch.return_value = self._mock_fetch(fake_html)
+        result = self.scraper._scrape_mercadolibre("Uruguay")
+        self.assertEqual(result, [])
+
+    @patch.object(RealEstateScraper, 'fetch')
+    def test_scrape_zonaprop_malformed_html(self, mock_fetch: MagicMock) -> None:
+        """_scrape_zonaprop should return partial data when some elements missing."""
+        fake_html = """
+        <html>
+          <body>
+            <div class="postingCard">
+              <h2><a class="title">Only title</a></h2>
+              <!-- no price, no location, no m2, no bedrooms, no bathrooms -->
+            </div>
+          </body>
+        </html>
+        """
+        mock_fetch.return_value = self._mock_fetch(fake_html)
+        result = self.scraper._scrape_zonaprop("CABA")
+        self.assertEqual(len(result), 1)
+        prop = result[0]
+        self.assertEqual(prop["title"], "Only title")
+        self.assertIsNone(prop["price"])
+        self.assertIsNone(prop["location"])
+        self.assertIsNone(prop["m2"])
+        self.assertIsNone(prop["bedrooms"])
+        self.assertIsNone(prop["bathrooms"])
+        self.assertIsNone(prop["price_per_m2"])
+
+    @patch.object(RealEstateScraper, 'fetch')
+    def test_scrape_mercadolibre_malformed_html(self, mock_fetch: MagicMock) -> None:
+        """_scrape_mercadolibre should return partial data when some elements missing."""
+        fake_html = """
+        <html>
+          <body>
+            <li class="ui-search-layout__item">
+              <h2><a class="title">Only title</a></h2>
+              <!-- no price, no location, no m2, no bedrooms, no bathrooms -->
+            </li>
+          </body>
+        </html>
+        """
+        mock_fetch.return_value = self._mock_fetch(fake_html)
+        result = self.scraper._scrape_mercadolibre("Uruguay")
+        self.assertEqual(len(result), 1)
+        prop = result[0]
+        self.assertEqual(prop["title"], "Only title")
+        self.assertIsNone(prop["price"])
+        self.assertIsNone(prop["location"])
+        self.assertIsNone(prop["m2"])
+        self.assertIsNone(prop["bedrooms"])
+        self.assertIsNone(prop["bathrooms"])
+        self.assertIsNone(prop["price_per_m2"])
+
+
 if __name__ == "__main__":
     unittest.main()
