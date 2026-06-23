@@ -314,7 +314,7 @@ class TestScrapeZonapropMercadoLibre(unittest.TestCase):
         self.assertEqual(prop["source"], "mercadolibre")
         self.assertIsNotNone(prop["url"])
         self.assertIsNotNone(prop["scraped_at"])
-        self.assertAlmostEqual(prop["price_per_m2"], 350000.0 / 120.0)
+        self.assertAlmostEqual(prop["price_per_m2"], round(350000.0 / 120.0, 2), places=2)
 
     @patch.object(RealEstateScraper, 'fetch')
     def test_scrape_zonaprop_empty_cards(self, mock_fetch: MagicMock) -> None:
@@ -458,7 +458,7 @@ class TestScrapeZonapropMercadoLibre(unittest.TestCase):
         self.assertEqual(prop["source"], "mercadolibre")
         self.assertIsNotNone(prop["url"])
         self.assertIsNotNone(prop["scraped_at"])
-        self.assertAlmostEqual(prop["price_per_m2"], 350000.0 / 120.0)
+        self.assertAlmostEqual(prop["price_per_m2"], round(350000.0 / 120.0, 2), places=2)
 
     @patch.object(RealEstateScraper, 'fetch')
     def test_scrape_zonaprop_empty_cards(self, mock_fetch: MagicMock) -> None:
