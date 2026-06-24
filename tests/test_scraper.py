@@ -133,6 +133,56 @@ class TestRealEstateScraper(unittest.TestCase):
         result = RealEstateScraper._parse_price("")
         self.assertIsNone(result)
 
+    def test_parse_price_argentino_con_punto_miles(self) -> None:
+        """_parse_price should handle '$ 1.234,56' → 1234.56."""
+        result = RealEstateScraper._parse_price("$ 1.234,56")
+        self.assertAlmostEqual(result, 1234.56)
+
+    def test_parse_price_internacional_con_coma_miles(self) -> None:
+        """_parse_price should handle '1,234.56' → 1234.56."""
+        result = RealEstateScraper._parse_price("1,234.56")
+        self.assertAlmostEqual(result, 1234.56)
+
+    def test_parse_price_entero_sin_separador(self) -> None:
+        """_parse_price should handle '150000' → 150000.0."""
+        result = RealEstateScraper._parse_price("150000")
+        self.assertAlmostEqual(result, 150000.0)
+
+    def test_parse_price_u(self) -> None:
+        """_parse_price should handle 'U 500,000' → 500000.0."""
+        result = RealEstateScraper._parse_price("U 500,000")
+        self.assertAlmostEqual(result, 500000.0)
+
+    def test_parse_price_usd(self) -> None:
+        """_parse_price should handle 'USD 1.500,75' → 1500.75."""
+        result = RealEstateScraper._parse_price("USD 1.500,75")
+        self.assertAlmostEqual(result, 1500.75)
+
+    @patch("src.scraper.time.sleep")
+    @patch("src.scraper.requests.Session.get")
+    def test_rate_limiter_llama_sleep(
+        self,
+        mock_get: MagicMock,
+        mock_sleep: MagicMock,
+    ) -> None:
+        """Verify that fetch calls time.sleep when request_delay > 0."""
+        # Arrange
+        mock_response = MagicMock()
+        mock_response.text = "<html></html>"
+        mock_response.raise_for_status.return_value = None
+        mock_get.return_value = mock_response
+
+        scraper = RealEstateScraper(
+            "https://example.com",
+            request_delay=0.5,
+        )
+
+        # Act
+        scraper.fetch("/test")
+
+        # Assert
+        mock_sleep.assert_called_once_with(0.5)
+
     # ------------------------------------------------------------------
     # Tests for _parse_m2 static method
     # ------------------------------------------------------------------

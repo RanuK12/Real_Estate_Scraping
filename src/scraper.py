@@ -32,7 +32,8 @@ logging.basicConfig(
 class BaseScraper(ABC):
     """
     Abstract base scraper that handles HTTP requests, retries, logging,
-    optional proxy rotation and stealth‑browser fallback (rk‑stealth‑browse).
+    optional proxy rotation, stealth‑browser fallback (rk‑stealth‑browse),
+    and a configurable delay between requests (rate‑limiting).
     """
 
     def __init__(
@@ -44,6 +45,7 @@ class BaseScraper(ABC):
         backoff_factor: float = 0.5,
         proxies: Optional[List[str]] = None,
         use_stealth: bool = False,
+        request_delay: float = 0.0,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
@@ -51,6 +53,7 @@ class BaseScraper(ABC):
         self.backoff_factor = backoff_factor
         self.proxies = proxies or []
         self.use_stealth = use_stealth
+        self.request_delay = request_delay
 
         self.session = requests.Session()
         if headers:
@@ -99,6 +102,8 @@ class BaseScraper(ABC):
                     proxies={"http": proxy, "https": proxy} if proxy else None,
                 )
                 response.raise_for_status()
+                if self.request_delay > 0:
+                    time.sleep(self.request_delay)
                 return response
             except (requests.exceptions.RequestException,
                     requests.exceptions.Timeout) as e:
@@ -152,8 +157,49 @@ class RealEstateScraper(BaseScraper):
             return None
         # Remove currency symbols and spaces
         cleaned = price_str.replace("U$S", "").replace("USD", "").replace("$", "").strip()
-        # Remove all dots and commas (thousands separators) to get plain number
-        cleaned = cleaned.replace(".", "").replace(",", "").replace(" ", "")
+        # Remove spaces
+        cleaned = cleaned.replace(" ", "")
+        if not cleaned:
+            return None
+
+        # Determine decimal and thousands separators
+        last_comma = cleaned.rfind(",")
+        last_dot = cleaned.rfind(".")
+
+        decimal_sep = None
+        thousands_sep = None
+
+        if last_comma != -1 and last_dot != -1:
+            # Both present
+            if last_comma > last_dot:
+                decimal_sep = ","
+                thousands_sep = "."
+            else:
+                decimal_sep = "."
+                thousands_sep = ","
+        elif last_comma != -1:
+            # Only comma
+            after_comma = cleaned[last_comma + 1:]
+            if len(after_comma) == 3:
+                thousands_sep = ","
+            else:
+                decimal_sep = ","
+        elif last_dot != -1:
+            # Only dot
+            after_dot = cleaned[last_dot + 1:]
+            if len(after_dot) == 3:
+                thousands_sep = "."
+            else:
+                decimal_sep = "."
+        # else: no separator, keep as is
+
+        # Remove thousands separator
+        if thousands_sep:
+            cleaned = cleaned.replace(thousands_sep, "")
+        # Replace decimal separator with '.'
+        if decimal_sep:
+            cleaned = cleaned.replace(decimal_sep, ".")
+
         try:
             return float(cleaned)
         except ValueError:
