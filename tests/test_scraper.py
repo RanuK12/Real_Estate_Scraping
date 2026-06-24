@@ -149,8 +149,8 @@ class TestRealEstateScraper(unittest.TestCase):
         self.assertAlmostEqual(result, 150000.0)
 
     def test_parse_price_u(self) -> None:
-        """_parse_price should handle 'U 500,000' → 500000.0."""
-        result = RealEstateScraper._parse_price("U 500,000")
+        """_parse_price should handle 'U$S 500,000' → 500000.0."""
+        result = RealEstateScraper._parse_price("U$S 500,000")
         self.assertAlmostEqual(result, 500000.0)
 
     def test_parse_price_usd(self) -> None:
