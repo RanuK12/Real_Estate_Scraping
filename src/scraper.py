@@ -11,6 +11,7 @@ import random
 import csv
 import json
 import os
+import re
 from datetime import datetime
 from abc import ABC, abstractmethod
 from typing import Optional, Dict, Any, List
@@ -220,6 +221,211 @@ class RealEstateScraper(BaseScraper):
         return None
 
     # ------------------------------------------------------------------
+    # JSON‑LD extraction (most reliable)
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _parse_jsonld(soup: BeautifulSoup) -> List[Dict[str, Any]]:
+        """
+        Extract property listings from <script type="application/ld+json"> tags.
+
+        Returns a list of dicts with keys:
+            title, price, price_per_m2, m2, location, bedrooms, bathrooms,
+            source, url, scraped_at
+        """
+        import json
+        results: List[Dict[str, Any]] = []
+        scripts = soup.find_all("script", type="application/ld+json")
+        for script in scripts:
+            if not script.string:
+                continue
+            try:
+                data = json.loads(script.string)
+            except (json.JSONDecodeError, ValueError):
+                continue
+
+            # Normalise to a list of items
+            items = []
+            if isinstance(data, dict):
+                # Check @graph
+                if "@graph" in data:
+                    items = data["@graph"]
+                else:
+                    items = [data]
+            elif isinstance(data, list):
+                items = data
+            else:
+                continue
+
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                # Check @type
+                item_type = item.get("@type")
+                if isinstance(item_type, str):
+                    types_to_check = [item_type]
+                elif isinstance(item_type, list):
+                    types_to_check = item_type
+                else:
+                    types_to_check = []
+                allowed = {"Product", "Apartment", "House", "RealEstateListing"}
+                if not any(t in allowed for t in types_to_check):
+                    continue
+
+                title = item.get("name")
+                # price
+                offers = item.get("offers")
+                price = None
+                price_currency = None
+                if isinstance(offers, dict):
+                    price = offers.get("price")
+                    price_currency = offers.get("priceCurrency")
+                elif isinstance(offers, list):
+                    for offer in offers:
+                        if isinstance(offer, dict):
+                            p = offer.get("price")
+                            if p is not None:
+                                price = p
+                                price_currency = offer.get("priceCurrency")
+                                break
+
+                # location
+                address = item.get("address")
+                location = None
+                if isinstance(address, dict):
+                    location = address.get("addressLocality") or address.get("addressRegion")
+
+                # floor size
+                floor_size = item.get("floorSize")
+                m2 = None
+                if isinstance(floor_size, dict):
+                    m2_val = floor_size.get("value")
+                    if m2_val is not None:
+                        try:
+                            m2 = float(m2_val)
+                        except (ValueError, TypeError):
+                            pass
+
+                bedrooms = item.get("numberOfBedrooms")
+                bathrooms = item.get("numberOfBathrooms")
+                url = item.get("url")
+
+                # Convert price to float if possible
+                price_num = None
+                if price is not None:
+                    try:
+                        price_num = float(price)
+                    except (ValueError, TypeError):
+                        pass
+
+                price_per_m2 = None
+                if price_num is not None and m2 is not None and m2 > 0:
+                    price_per_m2 = round(price_num / m2, 2)
+
+                results.append({
+                    "title": title,
+                    "price": str(price) if price is not None else None,
+                    "price_per_m2": price_per_m2,
+                    "m2": m2,
+                    "location": location,
+                    "bedrooms": str(bedrooms) if bedrooms is not None else None,
+                    "bathrooms": str(bathrooms) if bathrooms is not None else None,
+                    "source": "zonaprop",  # will be overridden by caller
+                    "url": url,
+                    "scraped_at": datetime.now().isoformat(),
+                })
+        return results
+
+    # ------------------------------------------------------------------
+    # JS global variable extraction (fallback)
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _extract_from_scripts(soup: BeautifulSoup) -> List[Dict[str, Any]]:
+        """
+        Look for window.__INITIAL_STATE__ or similar JS globals using regex.
+
+        Returns a list of dicts with same keys as _parse_jsonld.
+        """
+        import re
+        results: List[Dict[str, Any]] = []
+        # Common patterns
+        patterns = [
+            r'window\.__INITIAL_STATE__\s*=\s*(\{.*?\});',
+            r'window\.__PRELOADED_STATE__\s*=\s*(\{.*?\});',
+            r'window\.__DATA__\s*=\s*(\{.*?\});',
+        ]
+        for script in soup.find_all("script"):
+            if not script.string:
+                continue
+            text = script.string
+            for pat in patterns:
+                match = re.search(pat, text, re.DOTALL)
+                if match:
+                    try:
+                        data = json.loads(match.group(1))
+                    except (json.JSONDecodeError, ValueError):
+                        continue
+                    # Attempt to find listings inside the state object
+                    # Heuristic: look for a key that contains "listings" or "properties"
+                    listings = None
+                    if isinstance(data, dict):
+                        for key in ("listings", "properties", "items", "results", "data"):
+                            val = data.get(key)
+                            if isinstance(val, list):
+                                listings = val
+                                break
+                            elif isinstance(val, dict):
+                                # maybe nested
+                                for subkey in ("listings", "properties", "items", "results"):
+                                    subval = val.get(subkey)
+                                    if isinstance(subval, list):
+                                        listings = subval
+                                        break
+                                if listings:
+                                    break
+                    if listings and isinstance(listings, list):
+                        for entry in listings:
+                            if not isinstance(entry, dict):
+                                continue
+                            title = entry.get("title") or entry.get("name")
+                            price = entry.get("price")
+                            location = entry.get("location") or entry.get("address")
+                            m2 = entry.get("m2") or entry.get("area") or entry.get("surface")
+                            bedrooms = entry.get("bedrooms") or entry.get("rooms")
+                            bathrooms = entry.get("bathrooms")
+                            url = entry.get("url")
+                            # Convert price
+                            price_num = None
+                            if price is not None:
+                                try:
+                                    price_num = float(price)
+                                except (ValueError, TypeError):
+                                    pass
+                            m2_num = None
+                            if m2 is not None:
+                                try:
+                                    m2_num = float(m2)
+                                except (ValueError, TypeError):
+                                    pass
+                            price_per_m2 = None
+                            if price_num is not None and m2_num is not None and m2_num > 0:
+                                price_per_m2 = round(price_num / m2_num, 2)
+                            results.append({
+                                "title": title,
+                                "price": str(price) if price is not None else None,
+                                "price_per_m2": price_per_m2,
+                                "m2": m2_num,
+                                "location": location,
+                                "bedrooms": str(bedrooms) if bedrooms is not None else None,
+                                "bathrooms": str(bathrooms) if bathrooms is not None else None,
+                                "source": "zonaprop",
+                                "url": url,
+                                "scraped_at": datetime.now().isoformat(),
+                            })
+                    # Only process first matching script for simplicity
+                    break
+        return results
+
+    # ------------------------------------------------------------------
     # scrape_property (kept for backward compatibility with existing tests)
     # ------------------------------------------------------------------
     def scrape_property(self, property_id: str) -> Dict[str, Any]:
@@ -332,6 +538,25 @@ class RealEstateScraper(BaseScraper):
             logging.error(f"Failed to fetch Zonaprop page: {exc}")
             return []
 
+        # 1. Try JSON‑LD extraction (most reliable)
+        properties = self._parse_jsonld(soup)
+        if properties:
+            # Mark source as zonaprop (already set in _parse_jsonld but ensure)
+            for p in properties:
+                p["source"] = "zonaprop"
+            logging.info(f"Extracted {len(properties)} properties via JSON‑LD")
+            return properties
+
+        # 2. Try JS global variable extraction
+        properties = self._extract_from_scripts(soup)
+        if properties:
+            for p in properties:
+                p["source"] = "zonaprop"
+            logging.info(f"Extracted {len(properties)} properties via JS globals")
+            return properties
+
+        # 3. Fallback to CSS selector parsing
+        logging.info("Falling back to CSS selector parsing")
         properties = []
         # Zonaprop listing cards – adjust selectors as needed
         cards = soup.select("div[class*='postingCard']")

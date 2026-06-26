@@ -433,5 +433,133 @@ class TestScrapeZonapropMercadoLibre(unittest.TestCase):
         self.assertIsNone(prop["price_per_m2"])
 
 
+class TestStructuredDataExtraction(unittest.TestCase):
+    """Tests for _parse_jsonld and _extract_from_scripts."""
+
+    def setUp(self) -> None:
+        self.scraper = RealEstateScraper("https://example.com")
+
+    # ------------------------------------------------------------------
+    # _parse_jsonld tests
+    # ------------------------------------------------------------------
+    def test_parse_jsonld_single_product(self) -> None:
+        """_parse_jsonld should extract a single Product with full details."""
+        from bs4 import BeautifulSoup
+        html = """<html><head><script type="application/ld+json">
+{
+  "@context": "http://schema.org",
+  "@type": "Product",
+  "name": "Departamento en Palermo",
+  "offers": {"@type": "Offer", "price": "125000", "priceCurrency": "USD"},
+  "address": {"@type": "PostalAddress", "addressLocality": "Palermo, CABA"},
+  "floorSize": {"@type": "QuantitativeValue", "value": "75"},
+  "numberOfBedrooms": 2,
+  "numberOfBathrooms": 1,
+  "url": "https://example.com/prop/1"
+}
+</script></head><body></body></html>"""
+        soup = BeautifulSoup(html, "html.parser")
+        result = RealEstateScraper._parse_jsonld(soup)
+        self.assertEqual(len(result), 1)
+        prop = result[0]
+        self.assertEqual(prop["title"], "Departamento en Palermo")
+        self.assertEqual(prop["price"], "125000")
+        self.assertEqual(prop["location"], "Palermo, CABA")
+        self.assertAlmostEqual(prop["m2"], 75.0)
+        self.assertEqual(prop["bedrooms"], "2")
+        self.assertEqual(prop["bathrooms"], "1")
+        self.assertEqual(prop["source"], "zonaprop")
+
+    def test_parse_jsonld_multiple_in_graph(self) -> None:
+        """_parse_jsonld should extract multiple items from @graph."""
+        from bs4 import BeautifulSoup
+        html = """<html><head><script type="application/ld+json">
+{
+  "@context": "http://schema.org",
+  "@graph": [
+    {
+      "@type": "Product",
+      "name": "Casa en Martinez",
+      "offers": {"@type": "Offer", "price": "250000"},
+      "address": {"@type": "PostalAddress", "addressLocality": "Martinez, Bs As"},
+      "floorSize": {"@type": "QuantitativeValue", "value": "120"},
+      "numberOfBedrooms": 3,
+      "numberOfBathrooms": 2
+    },
+    {
+      "@type": "Product",
+      "name": "Depto en Belgrano",
+      "offers": {"@type": "Offer", "price": "95000"},
+      "address": {"@type": "PostalAddress", "addressLocality": "Belgrano, CABA"},
+      "floorSize": {"@type": "QuantitativeValue", "value": "55"},
+      "numberOfBedrooms": 1,
+      "numberOfBathrooms": 1
+    }
+  ]
+}
+</script></head><body></body></html>"""
+        soup = BeautifulSoup(html, "html.parser")
+        result = RealEstateScraper._parse_jsonld(soup)
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0]["title"], "Casa en Martinez")
+        self.assertEqual(result[1]["title"], "Depto en Belgrano")
+
+    def test_parse_jsonld_no_script_tags(self) -> None:
+        """_parse_jsonld should return empty list when no JSON-LD scripts exist."""
+        from bs4 import BeautifulSoup
+        html = "<html><body><div>No scripts here</div></body></html>"
+        soup = BeautifulSoup(html, "html.parser")
+        result = RealEstateScraper._parse_jsonld(soup)
+        self.assertEqual(result, [])
+
+    def test_parse_jsonld_invalid_json(self) -> None:
+        """_parse_jsonld should gracefully skip invalid JSON."""
+        from bs4 import BeautifulSoup
+        html = """<html><head><script type="application/ld+json">
+{this is not valid json}
+</script></head><body></body></html>"""
+        soup = BeautifulSoup(html, "html.parser")
+        result = RealEstateScraper._parse_jsonld(soup)
+        self.assertEqual(result, [])
+
+    def test_parse_jsonld_missing_fields(self) -> None:
+        """_parse_jsonld should return None for missing optional fields."""
+        from bs4 import BeautifulSoup
+        html = """<html><head><script type="application/ld+json">
+{"@type": "Product", "name": "Minimal property"}
+</script></head><body></body></html>"""
+        soup = BeautifulSoup(html, "html.parser")
+        result = RealEstateScraper._parse_jsonld(soup)
+        self.assertEqual(len(result), 1)
+        prop = result[0]
+        self.assertEqual(prop["title"], "Minimal property")
+        self.assertIsNone(prop["price"])
+        self.assertIsNone(prop["location"])
+        self.assertIsNone(prop["m2"])
+        self.assertIsNone(prop["bedrooms"])
+        self.assertIsNone(prop["bathrooms"])
+
+    # ------------------------------------------------------------------
+    # _extract_from_scripts tests
+    # ------------------------------------------------------------------
+    def test_extract_from_scripts_with_initial_state(self) -> None:
+        """_extract_from_scripts should find data in window.__INITIAL_STATE__."""
+        from bs4 import BeautifulSoup
+        html = """<html><body><script>
+window.__INITIAL_STATE__ = {"listings": [{"title": "Loft en San Telmo", "price": 80000, "currency": "USD", "location": "San Telmo", "m2": 40, "bedrooms": 1, "bathrooms": 1}]};
+</script></body></html>"""
+        soup = BeautifulSoup(html, "html.parser")
+        result = RealEstateScraper._extract_from_scripts(soup)
+        self.assertGreaterEqual(len(result), 0)
+
+    def test_extract_from_scripts_no_data(self) -> None:
+        """_extract_from_scripts should return empty list when no JS data found."""
+        from bs4 import BeautifulSoup
+        html = "<html><body><script>var x = 1;</script></body></html>"
+        soup = BeautifulSoup(html, "html.parser")
+        result = RealEstateScraper._extract_from_scripts(soup)
+        self.assertEqual(result, [])
+
+
 if __name__ == "__main__":
     unittest.main()
