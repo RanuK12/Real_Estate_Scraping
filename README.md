@@ -16,12 +16,36 @@
 
 ---
 
+## Requisitos
+
+- Python 3.10+
+- pip 23+ (o Poetry)
+- Camofox (solo para modo stealth — integración en `~/Apps/ranukita-bridge/integrations/`)
+
 ## Instalación
+
+### macOS
+
+```bash
+brew install python@3.11
+```
+
+### Linux (Ubuntu/Debian)
+
+```bash
+sudo apt install python3.11 python3.11-venv
+```
+
+### El proyecto
 
 ```bash
 # Clonar
 git clone https://github.com/RanuK12/real_estate_scraping.git
 cd real_estate_scraping
+
+# Crear virtualenv y activar
+python3 -m venv .venv
+source .venv/bin/activate
 
 # Instalar en modo editable (recomendado)
 pip install -e .
