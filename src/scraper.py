@@ -210,15 +210,15 @@ class RealEstateScraper(BaseScraper):
     def _parse_m2(m2_str: Optional[str]) -> Optional[float]:
         if not m2_str:
             return None
-        # Extract first number (including decimals)
+        # Extract the numeric token (digits + thousands/decimal separators) and reuse
+        # _parse_price's separator disambiguation so "1.200 m²" -> 1200.0, not 1.2
+        # (the old code blindly turned every comma into a dot, reading a thousands
+        # separator as a decimal point and shrinking areas by ~1000x).
         import re
-        match = re.search(r"(\d+(?:[.,]\d+)?)", m2_str.replace(",", "."))
-        if match:
-            try:
-                return float(match.group(1))
-            except ValueError:
-                return None
-        return None
+        match = re.search(r"\d[\d.,]*", m2_str)
+        if not match:
+            return None
+        return RealEstateScraper._parse_price(match.group(0).rstrip(".,"))
 
     # ------------------------------------------------------------------
     # JSON‑LD extraction (most reliable)

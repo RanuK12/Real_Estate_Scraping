@@ -211,6 +211,21 @@ class TestRealEstateScraper(unittest.TestCase):
         result = RealEstateScraper._parse_m2("")
         self.assertIsNone(result)
 
+    def test_parse_m2_punto_miles(self) -> None:
+        """_parse_m2 should read '1.200 m²' as 1200, not 1.2 (thousands separator)."""
+        result = RealEstateScraper._parse_m2("1.200 m²")
+        self.assertAlmostEqual(result, 1200.0)
+
+    def test_parse_m2_coma_miles(self) -> None:
+        """_parse_m2 should read '1,200 m2' as 1200, not 1.2."""
+        result = RealEstateScraper._parse_m2("1,200 m2")
+        self.assertAlmostEqual(result, 1200.0)
+
+    def test_parse_m2_coma_decimal(self) -> None:
+        """_parse_m2 should read '85,5 m2' (Argentine decimal comma) as 85.5."""
+        result = RealEstateScraper._parse_m2("85,5 m2")
+        self.assertAlmostEqual(result, 85.5)
+
     # ------------------------------------------------------------------
     # Tests for export_data method
     # ------------------------------------------------------------------
