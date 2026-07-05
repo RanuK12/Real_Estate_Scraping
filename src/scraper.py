@@ -12,6 +12,7 @@ import csv
 import json
 import os
 import re
+import sys
 from datetime import datetime
 from abc import ABC, abstractmethod
 from typing import Optional, Dict, Any, List
@@ -20,12 +21,11 @@ import requests
 from bs4 import BeautifulSoup
 
 # ----------------------------------------------------------------------
-# Logging configuration
+# Logging configuration (structured JSON using loguru)
 # ----------------------------------------------------------------------
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s"
-)
+from loguru import logger
+logger.remove()
+logger.add(sys.stderr, level="INFO", format="{time} | {level} | {message}")
 
 # ----------------------------------------------------------------------
 # Base scraper (handles retries, proxy rotation, stealth fallback)

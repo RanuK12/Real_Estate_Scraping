@@ -126,6 +126,26 @@ pytest -v
 
 Los tests usan `unittest.mock` para simular respuestas HTTP sin depender de sitios reales.
 
+## Logging estructurado (loguru)
+
+El scraper ahora usa `loguru` para logging estructurado con JSON. Los logs se pueden redirigir a un archivo o stdout para facilitar la depuración y el monitoreo.
+
+Ejemplo de log en JSON:
+```json
+{
+  "time": "2025-07-05T12:00:00.000000Z",
+  "level": "ERROR",
+  "message": "Timeout",
+  "error": "ReadTimeout(10.0s)"
+}
+```
+
+Para redirigir logs a un archivo:
+```python
+from loguru import logger
+logger.add("scraper.log", level="INFO", format="{time} | {level} | {message}")
+```
+
 ---
 
 ## Estructura del proyecto
