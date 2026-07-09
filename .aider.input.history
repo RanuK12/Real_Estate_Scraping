@@ -70,3 +70,9 @@
 
 # 2026-06-20 15:27:01.322196
 +The entry point 'real-estate-scraper = src.cli:main' in pyproject.toml references src/cli.py which doesn't exist. Either: 1) create src/cli.py with a simple CLI that imports from src.scraper and runs it, or 2) change the entry point to something that exists. Since src/__init__.py exists but has no CLI function, create src/cli.py with a basic argparse interface that calls the scraper. Make it work when installed.
+
+# 2026-07-09 11:53:09.998181
++Fix admin role self-assignment in registration
+
+# 2026-07-09 11:53:09.999448
++Fix admin role self-assignment in registration
