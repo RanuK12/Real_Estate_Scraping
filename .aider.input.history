@@ -76,3 +76,9 @@
 
 # 2026-07-09 11:53:09.999448
 +Fix admin role self-assignment in registration
+
+# 2026-07-17 07:17:45.460676
++Agregar test para el fallback a stealth en scrape_property cuando falla el request HTTP
+
+# 2026-07-17 07:17:45.461788
++Agregar test para el fallback a stealth en scrape_property cuando falla el request HTTP
