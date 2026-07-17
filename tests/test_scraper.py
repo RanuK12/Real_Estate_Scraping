@@ -100,6 +100,42 @@ class TestRealEstateScraper(unittest.TestCase):
         self.assertIsNone(result["price"])
         self.assertIsNone(result["location"])
 
+    @patch("src.scraper.requests.Session.get")
+    def test_scrape_property_stealth_fallback_on_http_error(self, mock_get: MagicMock) -> None:
+        """
+        Verify that scrape_property falls back to stealth browsing when the
+        normal HTTP request fails and use_stealth is enabled.
+        """
+        from requests.exceptions import ConnectionError
+
+        # Arrange – create a scraper with stealth enabled
+        scraper = RealEstateScraper("https://example.com", use_stealth=True)
+
+        fake_html = """
+        <html>
+          <body>
+            <h1 class="property-title">Stealth House</h1>
+            <span class="price">$750,000</span>
+            <span class="location">456 Elm St, Othertown</span>
+          </body>
+        </html>
+        """
+
+        # Normal fetch fails
+        mock_get.side_effect = ConnectionError("Connection refused")
+
+        # Stealth fallback returns valid HTML
+        with patch.object(scraper, "_fetch_with_stealth", return_value=fake_html) as mock_stealth:
+            # Act
+            result = scraper.scrape_property("https://example.com/property/4")
+
+            # Assert – stealth was called as fallback
+            mock_stealth.assert_called_once_with("https://example.com/property/4")
+            self.assertIsInstance(result, dict)
+            self.assertEqual(result["title"], "Stealth House")
+            self.assertEqual(result["price"], "$750,000")
+            self.assertEqual(result["location"], "456 Elm St, Othertown")
+
     # ------------------------------------------------------------------
     # Tests for _parse_price static method
     # ------------------------------------------------------------------
