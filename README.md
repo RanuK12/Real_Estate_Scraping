@@ -67,10 +67,16 @@ real-estate-scraper --source zonaprop --zone CABA
 real-estate-scraper --source mercadolibre --zone Uruguay
 
 # Exportar a JSON
-real-estate-scraper --source zonaprop --format json --output data/
+real-estate-scraper --source zonaprop --export json --output-dir data/
 
 # Con proxy propio
-real-estate-scraper --source zonaprop --proxy http://user:pass@host:port
+real-estate-scraper --source zonaprop --proxies http://user:pass@host:port
+
+# Con timeout y retries personalizados
+real-estate-scraper --source zonaprop --timeout 60 --max-retries 5 --request-delay 1.0
+
+# Con stealth fallback
+real-estate-scraper --source mercadolibre --use-stealth
 ```
 
 ## Uso como librería
@@ -107,6 +113,7 @@ print(prop["title"], prop["price"], prop["location"])
 | `backoff_factor` | float | `1.0` | Factor de backoff exponencial. |
 | `use_stealth` | bool  | `False` | Usar Camofox como fallback. |
 | `proxy_list`  | list  | `[]`    | Lista de proxies `http://user:pass@host:port`. |
+| `request_delay` | float | `0.0` | Delay entre requests en segundos (rate‑limiting). |
 
 ### Métodos principales
 

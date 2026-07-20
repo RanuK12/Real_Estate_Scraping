@@ -788,6 +788,24 @@ def main() -> None:
         action="store_true",
         help="Fall back to rk‑stealth‑browse when normal requests fail.",
     )
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=30,
+        help="Request timeout in seconds (default: 30).",
+    )
+    parser.add_argument(
+        "--max-retries",
+        type=int,
+        default=3,
+        help="Max retries per request (default: 3).",
+    )
+    parser.add_argument(
+        "--request-delay",
+        type=float,
+        default=0.0,
+        help="Delay between requests in seconds (default: 0.0).",
+    )
 
     args = parser.parse_args()
 
@@ -795,11 +813,14 @@ def main() -> None:
         base_url="https://example.com",  # overridden by scrape_real
         proxies=args.proxies,
         use_stealth=args.use_stealth,
+        timeout=args.timeout,
+        max_retries=args.max_retries,
+        request_delay=args.request_delay,
     )
 
-    logging.info(f"Scraping source={args.source}, zone={args.zone}")
+    logger.info(f"Scraping source={args.source}, zone={args.zone}")
     data = scraper.scrape_real(source=args.source, zone=args.zone)
-    logging.info(f"Obtained {len(data)} properties.")
+    logger.info(f"Obtained {len(data)} properties.")
 
     if data:
         filepath = scraper.export_data(
@@ -807,9 +828,9 @@ def main() -> None:
             format=args.export,
             output_dir=args.output_dir,
         )
-        logging.info(f"Exported to {filepath}")
+        logger.info(f"Exported to {filepath}")
     else:
-        logging.warning("No data to export.")
+        logger.warning("No data to export.")
 
 
 if __name__ == "__main__":
