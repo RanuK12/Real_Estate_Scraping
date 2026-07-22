@@ -5,7 +5,6 @@ Provides a base abstract scraper class with retry logic, logging,
 and BeautifulSoup parsing. Subclass it to implement site‑specific logic.
 """
 
-import logging
 import time
 import random
 import csv
@@ -25,7 +24,7 @@ from bs4 import BeautifulSoup
 # ----------------------------------------------------------------------
 from loguru import logger
 logger.remove()
-logger.add(sys.stderr, level="INFO", format="{time} | {level} | {message}")
+logger.add(sys.stderr, level="INFO", serialize=True)
 
 # ----------------------------------------------------------------------
 # Base scraper (handles retries, proxy rotation, stealth fallback)
@@ -82,7 +81,7 @@ class BaseScraper(ABC):
         try:
             from rk_stealth_browse import StealthBrowser
         except ImportError:
-            logging.error("rk‑stealth‑browse not installed; cannot use stealth fallback.")
+            logger.error("rk‑stealth‑browse not installed; cannot use stealth fallback.")
             raise
 
         browser = StealthBrowser()
@@ -108,12 +107,12 @@ class BaseScraper(ABC):
                 return response
             except (requests.exceptions.RequestException,
                     requests.exceptions.Timeout) as e:
-                logging.warning(
+                logger.warning(
                     f"Attempt {attempt + 1} failed for {url} (proxy={proxy}): {e}"
                 )
                 if attempt == self.max_retries - 1:
                     if self.use_stealth:
-                        logging.info("Falling back to stealth browser...")
+                        logger.info("Falling back to stealth browser...")
                         html = self._fetch_with_stealth(url)
                         # Build a minimal response object that mimics requests.Response
                         mock_resp = requests.Response()
@@ -136,7 +135,7 @@ class RealEstateScraper(BaseScraper):
 
     def scrape(self) -> Dict[str, Any]:
         """Placeholder – not used in the unit tests."""
-        logging.info("Starting generic scrape...")
+        logger.info("Starting generic scrape...")
         return {"status": "success", "data": []}
 
     # ------------------------------------------------------------------
@@ -480,7 +479,7 @@ class RealEstateScraper(BaseScraper):
 
         except Exception as exc:
             # Network errors or unexpected parsing problems
-            logging.error(f"Unexpected error scraping property {property_id}: {exc}")
+            logger.error(f"Unexpected error scraping property {property_id}: {exc}")
             return {
                 "title": None,
                 "price": None,
@@ -529,13 +528,13 @@ class RealEstateScraper(BaseScraper):
         else:
             url = f"https://www.zonaprop.com.ar/{zone.lower().replace(' ','-')}.html"
 
-        logging.info(f"Scraping Zonaprop zone={zone} from {url}")
+        logger.info(f"Scraping Zonaprop zone={zone} from {url}")
         try:
             response = self.fetch(url)
             raw_html = getattr(response, "text", None) or getattr(response, "content", "")
             soup = BeautifulSoup(raw_html, "html.parser")
         except Exception as exc:
-            logging.error(f"Failed to fetch Zonaprop page: {exc}")
+            logger.error(f"Failed to fetch Zonaprop page: {exc}")
             return []
 
         # 1. Try JSON‑LD extraction (most reliable)
@@ -544,7 +543,7 @@ class RealEstateScraper(BaseScraper):
             # Mark source as zonaprop (already set in _parse_jsonld but ensure)
             for p in properties:
                 p["source"] = "zonaprop"
-            logging.info(f"Extracted {len(properties)} properties via JSON‑LD")
+            logger.info(f"Extracted {len(properties)} properties via JSON‑LD")
             return properties
 
         # 2. Try JS global variable extraction
@@ -552,11 +551,11 @@ class RealEstateScraper(BaseScraper):
         if properties:
             for p in properties:
                 p["source"] = "zonaprop"
-            logging.info(f"Extracted {len(properties)} properties via JS globals")
+            logger.info(f"Extracted {len(properties)} properties via JS globals")
             return properties
 
         # 3. Fallback to CSS selector parsing
-        logging.info("Falling back to CSS selector parsing")
+        logger.info("Falling back to CSS selector parsing")
         properties = []
         # Zonaprop listing cards – adjust selectors as needed
         cards = soup.select("div[class*='postingCard']")
@@ -618,13 +617,13 @@ class RealEstateScraper(BaseScraper):
         else:
             url = f"https://inmuebles.mercadolibre.com.uy/{zone.lower().replace(' ','-')}/"
 
-        logging.info(f"Scraping MercadoLibre zone={zone} from {url}")
+        logger.info(f"Scraping MercadoLibre zone={zone} from {url}")
         try:
             response = self.fetch(url)
             raw_html = getattr(response, "text", None) or getattr(response, "content", "")
             soup = BeautifulSoup(raw_html, "html.parser")
         except Exception as exc:
-            logging.error(f"Failed to fetch MercadoLibre page: {exc}")
+            logger.error(f"Failed to fetch MercadoLibre page: {exc}")
             return []
 
         properties = []

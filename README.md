@@ -135,16 +135,11 @@ Los tests usan `unittest.mock` para simular respuestas HTTP sin depender de siti
 
 ## Logging estructurado (loguru)
 
-El scraper ahora usa `loguru` para logging estructurado con JSON. Los logs se pueden redirigir a un archivo o stdout para facilitar la depuración y el monitoreo.
+El scraper usa `loguru` con `serialize=True` para emitir cada línea de log como un objeto JSON real (no solo texto formateado). Los logs se pueden redirigir a un archivo o stdout para facilitar la depuración y el monitoreo.
 
 Ejemplo de log en JSON:
 ```json
-{
-  "time": "2025-07-05T12:00:00.000000Z",
-  "level": "ERROR",
-  "message": "Timeout",
-  "error": "ReadTimeout(10.0s)"
-}
+{"text": "2026-07-22 18:14:53.590 | INFO | src.scraper:scrape:138 - Starting generic scrape...\n", "record": {"time": {...}, "level": {"name": "INFO", "no": 20}, "message": "Starting generic scrape...", "module": "scraper", "function": "scrape", "line": 138, ...}}
 ```
 
 Para redirigir logs a un archivo:
