@@ -76,3 +76,43 @@
 
 # 2026-07-09 11:53:09.999448
 +Fix admin role self-assignment in registration
+
+# 2026-07-23 23:54:56.663745
++Improve the CLI output with the `rich` library for better terminal UX. 
++
++Changes to make:
++1. In `pyproject.toml`: add `rich>=13.0.0` to the main dependencies list.
++2. In `src/scraper.py`: refactor the `main()` function to use `rich.console.Console` and `rich.table.Table` for displaying scraped listings. Show a `rich.progress.SpinnerColumn` during scraping. Use colors: green for prices, cyan for headers, yellow for warnings. Keep all existing functionality intact — just wrap the output in rich formatting. The `main()` function currently uses argparse and prints plain text; replace the print statements with rich console output.
++3. In `src/cli.py`: update the entry point to match if needed (should still just call main()).
++
++Keep all existing argparse logic, export functionality, and error handling. Just upgrade the visual output. Make sure all existing tests still pass — don't change any function signatures or data structures.
+
+# 2026-07-23 23:54:56.664280
++Improve the CLI output with the `rich` library for better terminal UX. 
++
++Changes to make:
++1. In `pyproject.toml`: add `rich>=13.0.0` to the main dependencies list.
++2. In `src/scraper.py`: refactor the `main()` function to use `rich.console.Console` and `rich.table.Table` for displaying scraped listings. Show a `rich.progress.SpinnerColumn` during scraping. Use colors: green for prices, cyan for headers, yellow for warnings. Keep all existing functionality intact — just wrap the output in rich formatting. The `main()` function currently uses argparse and prints plain text; replace the print statements with rich console output.
++3. In `src/cli.py`: update the entry point to match if needed (should still just call main()).
++
++Keep all existing argparse logic, export functionality, and error handling. Just upgrade the visual output. Make sure all existing tests still pass — don't change any function signatures or data structures.
+
+# 2026-07-24 00:09:52.086085
++Improve the CLI output with the `rich` library for better terminal UX. 
++
++Changes to make:
++1. In `pyproject.toml`: add `rich>=13.0.0` to the main dependencies list.
++2. In `src/scraper.py`: refactor the `main()` function to use `rich.console.Console` and `rich.table.Table` for displaying scraped listings. Show a `rich.progress.SpinnerColumn` during scraping. Use colors: green for prices, cyan for headers, yellow for warnings. Keep all existing functionality intact — just wrap the output in rich formatting. The `main()` function currently uses argparse and prints plain text; replace the print statements with rich console output.
++3. In `src/cli.py`: update the entry point to match if needed (should still just call main()).
++
++Keep all existing argparse logic, export functionality, and error handling. Just upgrade the visual output. Make sure all existing tests still pass — don't change any function signatures or data structures.
+
+# 2026-07-24 00:09:52.086496
++Improve the CLI output with the `rich` library for better terminal UX. 
++
++Changes to make:
++1. In `pyproject.toml`: add `rich>=13.0.0` to the main dependencies list.
++2. In `src/scraper.py`: refactor the `main()` function to use `rich.console.Console` and `rich.table.Table` for displaying scraped listings. Show a `rich.progress.SpinnerColumn` during scraping. Use colors: green for prices, cyan for headers, yellow for warnings. Keep all existing functionality intact — just wrap the output in rich formatting. The `main()` function currently uses argparse and prints plain text; replace the print statements with rich console output.
++3. In `src/cli.py`: update the entry point to match if needed (should still just call main()).
++
++Keep all existing argparse logic, export functionality, and error handling. Just upgrade the visual output. Make sure all existing tests still pass — don't change any function signatures or data structures.
