@@ -76,3 +76,9 @@
 
 # 2026-07-09 11:53:09.999448
 +Fix admin role self-assignment in registration
+
+# 2026-07-24 15:22:11.710978
++Agregar test para verificar que el tipo de propiedad se maneja correctamente en el parsing de precios
+
+# 2026-07-24 15:22:11.711824
++Agregar test para verificar que el tipo de propiedad se maneja correctamente en el parsing de precios
