@@ -82,3 +82,39 @@
 
 # 2026-07-24 15:22:11.711824
 +Agregar test para verificar que el tipo de propiedad se maneja correctamente en el parsing de precios
+
+# 2026-07-25 22:36:14.755499
++Improve the CLI output visually using the `rich` library. 
++
++Changes:
++1. In `src/scraper.py` main(): add `rich.console.Console` and `rich.table.Table` to display scraped properties as a formatted table (columns: title, price, location, m2, bedrooms, bathrooms, source). Use `rich.progress.Progress` as context manager around the scrape call. Use `rich.panel.Panel` for empty results warning.
++2. Add `rich>=13.0.0` to requirements.txt.
++3. Add `cli = ["rich>=13.0.0"]` to pyproject.toml optional-dependencies.
++Keep loguru logging intact — just ADD rich output on top.
+
+# 2026-07-25 22:36:14.756008
++Improve the CLI output visually using the `rich` library. 
++
++Changes:
++1. In `src/scraper.py` main(): add `rich.console.Console` and `rich.table.Table` to display scraped properties as a formatted table (columns: title, price, location, m2, bedrooms, bathrooms, source). Use `rich.progress.Progress` as context manager around the scrape call. Use `rich.panel.Panel` for empty results warning.
++2. Add `rich>=13.0.0` to requirements.txt.
++3. Add `cli = ["rich>=13.0.0"]` to pyproject.toml optional-dependencies.
++Keep loguru logging intact — just ADD rich output on top.
+
+# 2026-07-25 22:51:08.393844
++Improve the CLI output visually using the `rich` library. 
++
++Changes:
++1. In `src/scraper.py` main(): add `rich.console.Console` and `rich.table.Table` to display scraped properties as a formatted table (columns: title, price, location, m2, bedrooms, bathrooms, source). Use `rich.progress.Progress` as context manager around the scrape call. Use `rich.panel.Panel` for empty results warning.
++2. Add `rich>=13.0.0` to requirements.txt.
++3. Add `cli = ["rich>=13.0.0"]` to pyproject.toml optional-dependencies.
++Keep loguru logging intact — just ADD rich output on top.
+
+# 2026-07-25 22:51:08.394242
++Improve the CLI output visually using the `rich` library. 
++
++Changes:
++1. In `src/scraper.py` main(): add `rich.console.Console` and `rich.table.Table` to display scraped properties as a formatted table (columns: title, price, location, m2, bedrooms, bathrooms, source). Use `rich.progress.Progress` as context manager around the scrape call. Use `rich.panel.Panel` for empty results warning.
++2. Add `rich>=13.0.0` to requirements.txt.
++3. Add `cli = ["rich>=13.0.0"]` to pyproject.toml optional-dependencies.
++Keep loguru logging intact — just ADD rich output on top.

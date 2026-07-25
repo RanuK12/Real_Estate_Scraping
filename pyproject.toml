@@ -19,6 +19,7 @@ dependencies = [
 [project.optional-dependencies]
 stealth = ["rk-stealth-browse"]
 dev = ["pytest>=8.0.0", "reportlab", "PyPDF2"]
+cli = ["rich>=13.0.0"]
 
 [project.urls]
 Homepage = "https://github.com/RanuK12/real_estate_scraping"
