@@ -805,6 +805,11 @@ def main() -> None:
         default=0.0,
         help="Delay between requests in seconds (default: 0.0).",
     )
+    parser.add_argument(
+        "--plain",
+        action="store_true",
+        help="Disable rich formatting (plain text output).",
+    )
 
     args = parser.parse_args()
 
@@ -817,8 +822,39 @@ def main() -> None:
         request_delay=args.request_delay,
     )
 
-    logger.info(f"Scraping source={args.source}, zone={args.zone}")
-    data = scraper.scrape_real(source=args.source, zone=args.zone)
+    # --- Rich output (optional) ---
+    console = None
+    if not args.plain:
+        try:
+            from rich.console import Console
+            from rich.table import Table
+            from rich.panel import Panel
+            from rich.progress import Progress, SpinnerColumn, TextColumn
+            console = Console()
+        except ImportError:
+            pass  # fall back to plain logging
+
+    if console:
+        console.print(
+            Panel.fit(
+                f"[bold cyan]Real‑Estate Scraper[/bold cyan]\n"
+                f"Source: [yellow]{args.source}[/yellow] | "
+                f"Zone: [yellow]{args.zone}[/yellow]",
+                border_style="cyan",
+            )
+        )
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+        ) as progress:
+            task = progress.add_task("[cyan]Scraping...", total=None)
+            data = scraper.scrape_real(source=args.source, zone=args.zone)
+            progress.update(task, completed=1, description="[green]Scraping complete!")
+    else:
+        logger.info(f"Scraping source={args.source}, zone={args.zone}")
+        data = scraper.scrape_real(source=args.source, zone=args.zone)
+
     logger.info(f"Obtained {len(data)} properties.")
 
     if data:
@@ -828,8 +864,47 @@ def main() -> None:
             output_dir=args.output_dir,
         )
         logger.info(f"Exported to {filepath}")
+
+        if console:
+            table = Table(
+                title=f"🏠  Properties — {args.source} ({args.zone})",
+                title_style="bold cyan",
+                border_style="dim cyan",
+                header_style="bold white",
+            )
+            table.add_column("Title", style="white", max_width=36, overflow="fold")
+            table.add_column("Price", style="green", justify="right")
+            table.add_column("Location", style="dim")
+            table.add_column("m²", justify="right")
+            table.add_column("Beds", justify="center")
+            table.add_column("Baths", justify="center")
+            table.add_column("Source", style="blue")
+
+            for prop in data[:25]:  # limit terminal output
+                table.add_row(
+                    str(prop.get("title", "-"))[:60],
+                    str(prop.get("price", "-")),
+                    str(prop.get("location", "-")),
+                    str(prop.get("m2", "-")),
+                    str(prop.get("bedrooms", "-")),
+                    str(prop.get("bathrooms", "-")),
+                    str(prop.get("source", "-")),
+                )
+
+            console.print(table)
+            console.print(
+                f"[dim]{len(data)} properties | exported to [bold]{filepath}[/bold][/dim]"
+            )
     else:
-        logger.warning("No data to export.")
+        if console:
+            console.print(
+                Panel(
+                    "[yellow]No properties found.[/yellow] Try a different source or zone.",
+                    border_style="yellow",
+                )
+            )
+        else:
+            logger.warning("No data to export.")
 
 
 if __name__ == "__main__":
