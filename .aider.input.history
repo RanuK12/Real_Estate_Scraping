@@ -118,3 +118,9 @@
 +2. Add `rich>=13.0.0` to requirements.txt.
 +3. Add `cli = ["rich>=13.0.0"]` to pyproject.toml optional-dependencies.
 +Keep loguru logging intact — just ADD rich output on top.
+
+# 2026-07-27 05:10:11.119972
++In src/scraper.py, there are two bare 'except Exception: continue' blocks (around lines 603 and 671 inside the zonaprop and mercadolibre card-parsing loops) that silently swallow errors. Add a logger.warning() call inside each before the 'continue', logging the exception with a short message like 'Failed to parse card: {exc}'. This makes debugging easier when a single card fails without killing the whole scrape. Do NOT change any other logic.
+
+# 2026-07-27 05:10:11.121493
++In src/scraper.py, there are two bare 'except Exception: continue' blocks (around lines 603 and 671 inside the zonaprop and mercadolibre card-parsing loops) that silently swallow errors. Add a logger.warning() call inside each before the 'continue', logging the exception with a short message like 'Failed to parse card: {exc}'. This makes debugging easier when a single card fails without killing the whole scrape. Do NOT change any other logic.
