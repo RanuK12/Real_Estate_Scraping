@@ -600,7 +600,8 @@ class RealEstateScraper(BaseScraper):
                     "url": url,
                     "scraped_at": datetime.now().isoformat(),
                 })
-            except Exception:
+            except Exception as exc:
+                logger.warning(f"Failed to parse Zonaprop card: {exc}")
                 continue
 
         return properties
@@ -668,7 +669,8 @@ class RealEstateScraper(BaseScraper):
                     "url": url,
                     "scraped_at": datetime.now().isoformat(),
                 })
-            except Exception:
+            except Exception as exc:
+                logger.warning(f"Failed to parse MercadoLibre card: {exc}")
                 continue
 
         return properties
