@@ -124,3 +124,9 @@
 
 # 2026-07-27 05:10:11.121493
 +In src/scraper.py, there are two bare 'except Exception: continue' blocks (around lines 603 and 671 inside the zonaprop and mercadolibre card-parsing loops) that silently swallow errors. Add a logger.warning() call inside each before the 'continue', logging the exception with a short message like 'Failed to parse card: {exc}'. This makes debugging easier when a single card fails without killing the whole scrape. Do NOT change any other logic.
+
+# 2026-07-30 00:36:13.623868
++Agregá tests unitarios para src/cli.py (entry point del CLI). El archivo cli.py tiene solo 3 líneas: import de main y el bloque if __name__ == '__main__': main(). Los tests deben verificar que al ejecutar cli.py como __main__ se llama a main(). Usá unittest.mock para parchear src.scraper.main. Agregá 2 tests: (1) test_cli_runs_main: verifica que correr cli.py como módulo llama a main(), (2) test_cli_import_does_not_run: verifica que importar cli no dispara main() automáticamente. Seguí el estilo de tests/test_cli.py (unittest, MagicMock, patch). Pone los tests en tests/test_cli.py al final del archivo.
+
+# 2026-07-30 00:36:13.624681
++Agregá tests unitarios para src/cli.py (entry point del CLI). El archivo cli.py tiene solo 3 líneas: import de main y el bloque if __name__ == '__main__': main(). Los tests deben verificar que al ejecutar cli.py como __main__ se llama a main(). Usá unittest.mock para parchear src.scraper.main. Agregá 2 tests: (1) test_cli_runs_main: verifica que correr cli.py como módulo llama a main(), (2) test_cli_import_does_not_run: verifica que importar cli no dispara main() automáticamente. Seguí el estilo de tests/test_cli.py (unittest, MagicMock, patch). Pone los tests en tests/test_cli.py al final del archivo.
