@@ -205,5 +205,41 @@ class TestCliMain(unittest.TestCase):
         self.assertTrue(ctor_kwargs.get("use_stealth"))
 
 
+class TestCliEntryPoint(unittest.TestCase):
+    """Tests for the src/cli.py entry point."""
+
+    def setUp(self) -> None:
+        """Remove any pre‑existing scraper module reference."""
+        for mod in list(sys.modules.keys()):
+            if "src.scraper" in mod:
+                del sys.modules[mod]
+
+    @patch("src.scraper.main")
+    def test_cli_runs_main(self, mock_main: MagicMock) -> None:
+        """
+        Running cli.py as __main__ should call src.scraper.main().
+        """
+        # Simulate that cli.py is being executed as the main module.
+        with patch.dict(sys.modules, {"__main__": sys.modules[__name__]}):
+            # We need to import cli.py inside the patched environment.
+            # Because cli.py is a separate file, we can execute its code
+            # by using runpy.run_module or by importing it after patching
+            # __name__.
+            import runpy
+            runpy.run_module("src.cli", run_name="__main__")
+
+        mock_main.assert_called_once()
+
+    @patch("src.scraper.main")
+    def test_cli_import_does_not_run(self, mock_main: MagicMock) -> None:
+        """
+        Importing cli.py should NOT call main() automatically.
+        """
+        # Import the module normally; the if __name__ == '__main__' guard
+        # should prevent main() from being called.
+        import src.cli
+        mock_main.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()
