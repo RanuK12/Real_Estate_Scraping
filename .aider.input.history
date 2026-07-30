@@ -130,3 +130,9 @@
 
 # 2026-07-30 00:36:13.624681
 +Agregá tests unitarios para src/cli.py (entry point del CLI). El archivo cli.py tiene solo 3 líneas: import de main y el bloque if __name__ == '__main__': main(). Los tests deben verificar que al ejecutar cli.py como __main__ se llama a main(). Usá unittest.mock para parchear src.scraper.main. Agregá 2 tests: (1) test_cli_runs_main: verifica que correr cli.py como módulo llama a main(), (2) test_cli_import_does_not_run: verifica que importar cli no dispara main() automáticamente. Seguí el estilo de tests/test_cli.py (unittest, MagicMock, patch). Pone los tests en tests/test_cli.py al final del archivo.
+
+# 2026-07-30 15:56:56.327298
++Mejorar la interfaz de usuario del sitio web para que sea mas accesible y amigable
+
+# 2026-07-30 15:56:56.328394
++Mejorar la interfaz de usuario del sitio web para que sea mas accesible y amigable
