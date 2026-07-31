@@ -130,3 +130,21 @@
 
 # 2026-07-30 00:36:13.624681
 +Agregá tests unitarios para src/cli.py (entry point del CLI). El archivo cli.py tiene solo 3 líneas: import de main y el bloque if __name__ == '__main__': main(). Los tests deben verificar que al ejecutar cli.py como __main__ se llama a main(). Usá unittest.mock para parchear src.scraper.main. Agregá 2 tests: (1) test_cli_runs_main: verifica que correr cli.py como módulo llama a main(), (2) test_cli_import_does_not_run: verifica que importar cli no dispara main() automáticamente. Seguí el estilo de tests/test_cli.py (unittest, MagicMock, patch). Pone los tests en tests/test_cli.py al final del archivo.
+
+# 2026-07-31 06:56:47.528588
++Add 2 tests to tests/test_scraper.py in the TestRealEstateScraper class:
++
++1. `test_export_data_invalid_format_raises_value_error`: calls `scraper.export_data([{"title": "test"}], format="xml")` and asserts ValueError is raised with message containing "Unsupported export format".
++
++2. `test_export_data_format_case_insensitive`: calls `scraper.export_data([{"title": "test"}], format="JSON")` (uppercase) and verifies it creates a .json file successfully (no error raised).
++
++Use the existing scraper fixture pattern already in the test file. Follow the existing style (unittest, MagicMock where needed). Keep it minimal.
+
+# 2026-07-31 06:56:47.529197
++Add 2 tests to tests/test_scraper.py in the TestRealEstateScraper class:
++
++1. `test_export_data_invalid_format_raises_value_error`: calls `scraper.export_data([{"title": "test"}], format="xml")` and asserts ValueError is raised with message containing "Unsupported export format".
++
++2. `test_export_data_format_case_insensitive`: calls `scraper.export_data([{"title": "test"}], format="JSON")` (uppercase) and verifies it creates a .json file successfully (no error raised).
++
++Use the existing scraper fixture pattern already in the test file. Follow the existing style (unittest, MagicMock where needed). Keep it minimal.
