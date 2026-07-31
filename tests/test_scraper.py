@@ -264,6 +264,20 @@ class TestRealEstateScraper(unittest.TestCase):
             self.assertIn("price", rows[0])
             self.assertIn("location", rows[0])
 
+    def test_export_data_invalid_format_raises_value_error(self) -> None:
+        """export_data should raise ValueError for an unsupported format."""
+        with self.assertRaises(ValueError) as ctx:
+            self.scraper.export_data([{"title": "test"}], format="xml")
+        self.assertIn("Unsupported export format", str(ctx.exception))
+
+    def test_export_data_format_case_insensitive(self) -> None:
+        """export_data should accept format in any case (e.g., 'JSON')."""
+        data = [{"title": "test"}]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            self.scraper.export_data(data, format="JSON", output_dir=tmpdir)
+            json_files = glob.glob(os.path.join(tmpdir, "properties_*.json"))
+            self.assertEqual(len(json_files), 1)
+
     # ------------------------------------------------------------------
     # Tests for scrape_real method
     # ------------------------------------------------------------------
