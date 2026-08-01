@@ -130,3 +130,33 @@
 
 # 2026-07-30 00:36:13.624681
 +Agregá tests unitarios para src/cli.py (entry point del CLI). El archivo cli.py tiene solo 3 líneas: import de main y el bloque if __name__ == '__main__': main(). Los tests deben verificar que al ejecutar cli.py como __main__ se llama a main(). Usá unittest.mock para parchear src.scraper.main. Agregá 2 tests: (1) test_cli_runs_main: verifica que correr cli.py como módulo llama a main(), (2) test_cli_import_does_not_run: verifica que importar cli no dispara main() automáticamente. Seguí el estilo de tests/test_cli.py (unittest, MagicMock, patch). Pone los tests en tests/test_cli.py al final del archivo.
+
+# 2026-08-01 14:56:17.231833
++Mejora visual de la CLI: usar la librería Rich (rich>=13.0.0, ya está en pyproject.toml como dependencia opcional 'cli') para la salida de la función main() en src/scraper.py. Cambios concretos:
++
++1. Agregar import de rich al inicio del archivo: from rich.console import Console; from rich.table import Table; from rich.panel import Panel; from rich import print as rprint.
++
++2. En main(): crear un console = Console(). Al inicio mostrar un Panel con título '🏠 Real Estate Scraper' y metadata (source, zone, timestamp) usando rich.
++
++3. Al final, si hay resultados, mostrar una Table de Rich con columnas: #, Title, Price, m², Price/m², Location, Bedrooms, Bathrooms, Source. Usar estilo minimalista. Si no hay resultados, mostrar un Panel amarillo de advertencia 'No properties found'.
++
++4. Mostrar un resumen final con console.print() en verde/cyan: cantidad de propiedades, archivo exportado, tiempo total.
++
++5. Mantener compatibilidad: si Rich no está instalado, hacer fallback silencioso a los prints actuales (try/except ImportError).
++
++No tocar la lógica de scraping ni export_data — solo la presentación en main().
+
+# 2026-08-01 14:56:17.232801
++Mejora visual de la CLI: usar la librería Rich (rich>=13.0.0, ya está en pyproject.toml como dependencia opcional 'cli') para la salida de la función main() en src/scraper.py. Cambios concretos:
++
++1. Agregar import de rich al inicio del archivo: from rich.console import Console; from rich.table import Table; from rich.panel import Panel; from rich import print as rprint.
++
++2. En main(): crear un console = Console(). Al inicio mostrar un Panel con título '🏠 Real Estate Scraper' y metadata (source, zone, timestamp) usando rich.
++
++3. Al final, si hay resultados, mostrar una Table de Rich con columnas: #, Title, Price, m², Price/m², Location, Bedrooms, Bathrooms, Source. Usar estilo minimalista. Si no hay resultados, mostrar un Panel amarillo de advertencia 'No properties found'.
++
++4. Mostrar un resumen final con console.print() en verde/cyan: cantidad de propiedades, archivo exportado, tiempo total.
++
++5. Mantener compatibilidad: si Rich no está instalado, hacer fallback silencioso a los prints actuales (try/except ImportError).
++
++No tocar la lógica de scraping ni export_data — solo la presentación en main().
