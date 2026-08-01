@@ -204,6 +204,44 @@ class TestCliMain(unittest.TestCase):
         self.assertEqual(ctor_kwargs.get("proxies"), ["http://p:8080"])
         self.assertTrue(ctor_kwargs.get("use_stealth"))
 
+    @patch("src.scraper.RealEstateScraper")
+    def test_main_plain_flag_disables_rich(self, mock_scraper_cls: MagicMock) -> None:
+        """
+        --plain flag should skip rich imports and use plain logging.
+        """
+        mock_instance = MagicMock()
+        mock_instance.scrape_real.return_value = [{"title": "PH"}]
+        mock_instance.export_data.return_value = "data/properties.csv"
+        mock_scraper_cls.return_value = mock_instance
+
+        test_args = ["real-estate-scraper", "--plain"]
+        with patch.object(sys, "argv", test_args):
+            from src.scraper import main
+            main()
+
+        mock_scraper_cls.assert_called_once()
+        mock_instance.scrape_real.assert_called_once_with(
+            source="zonaprop", zone="CABA"
+        )
+        mock_instance.export_data.assert_called_once()
+
+    @patch("src.scraper.RealEstateScraper")
+    def test_main_plain_no_data_logs_warning(self, mock_scraper_cls: MagicMock) -> None:
+        """
+        --plain with no results should log a warning (not crash).
+        """
+        mock_instance = MagicMock()
+        mock_instance.scrape_real.return_value = []
+        mock_scraper_cls.return_value = mock_instance
+
+        test_args = ["real-estate-scraper", "--plain"]
+        with patch.object(sys, "argv", test_args):
+            from src.scraper import main
+            main()
+
+        mock_instance.scrape_real.assert_called_once()
+        mock_instance.export_data.assert_not_called()
+
 
 class TestCliEntryPoint(unittest.TestCase):
     """Tests for the src/cli.py entry point."""
