@@ -30,5 +30,9 @@ run:
 run-json:
 	real-estate-scraper --source mercadolibre --zone Uruguay --export json
 
+# Build the per-zone market report PDF from data already scraped
+report:
+	real-estate-report --data-dir data --output Real_Estate_Report.pdf
+
 # Run all checks before pushing
 ci: lint test
