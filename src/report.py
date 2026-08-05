@@ -172,4 +172,17 @@ def generate_pdf(
             [
                 ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2c3e50")),
                 ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                ("FONTNAME", (0, 0), (-1, 0), "Hel
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f5f5f5")]),
+                ("ALIGN", (1, 0), (-1, -1), "CENTER"),
+                ("FONTSIZE", (0, 0), (-1, -1), 10),
+            ]
+        )
+    )
+    story.append(table)
+    story.append(Spacer(1, 0.3 * inch))
+    
+    # Construcción del documento
+    doc.build(story)
+    return output_path
