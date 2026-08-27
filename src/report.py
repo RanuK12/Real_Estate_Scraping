@@ -61,6 +61,11 @@ def _to_float(value: Any) -> Optional[float]:
     if value in (None, ""):
         return None
     try:
+        # Remove currency symbols and commas before converting to float
+        if isinstance(value, str):
+            # Remove $ and commas
+            clean_value = value.replace('$', '').replace(',', '').strip()
+            return float(clean_value)
         return float(value)
     except (TypeError, ValueError):
         return None
@@ -145,12 +150,11 @@ def generate_pdf(
 
     story.append(Paragraph("Resumen Ejecutivo", styles["Heading2"]))
     story.append(Spacer(1, 0.1 * inch))
-    summary_text = (
-        f"Se analizaron <b>{total_properties}</b> propiedades en <b>{total_zones}</b> zonas. "
-        f"El precio promedio general es <b>${overall_avg_price:,.2f}</b>." if overall_avg_price is not None
-        else f"Se analizaron <b>{total_properties}</b> propiedades en <b>{total_zones}</b> zonas. "
-             f"No hay datos de precio para calcular el promedio general."
-    )
+    if overall_avg_price is not None:
+        summary_text = f"Se analizaron <b>{total_properties}</b> propiedades en <b>{total_zones}</b> zonas. El precio promedio general es <b>${overall_avg_price:,.2f}</b>."
+    else:
+        summary_text = f"Se analizaron <b>{total_properties}</b> propiedades en <b>{total_zones}</b> zonas. No hay datos de precio para calcular el promedio general."
+    story.append(Paragraph(summary_text, styles["Normal"]))
     story.append(Paragraph(summary_text, styles["Normal"]))
     story.append(Spacer(1, 0.3 * inch))
 
