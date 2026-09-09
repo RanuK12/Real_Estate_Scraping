@@ -99,7 +99,7 @@ def build_zone_stats(records: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]
         avg_price = round(statistics.mean(prices), 2) if prices else None
 
         prices_m2 = [p for p in (_to_float(r.get("price_per_m2")) for r in rows) if p is not None]
-        avg_price_per_m2 = round(statistics.mean(prices_m2), 2) if prices_m2 else None
+        avg_price_per_m2 = round(statistics.median(prices_m2), 2) if prices_m2 else None
 
         sizes = [s for s in (_to_float(r.get("m2")) for r in rows) if s is not None]
         avg_size = round(statistics.mean(sizes), 2) if sizes else None
