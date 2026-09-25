@@ -1,7 +1,4 @@
-reportlab
-PyPDF2
-requests>=2.31.0
-beautifulsoup4>=4.12.0
-pytest>=8.0.0
-rk-stealth-browse
-rich>=13.0.0
+pandas
+matplotlib
+seaborn
+fpdf2
