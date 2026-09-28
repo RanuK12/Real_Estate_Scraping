@@ -1,192 +1,149 @@
-"""
-Generate a per-zone real-estate market report (PDF) from the scraper's
-exported data (CSV/JSON in ``data/``).
-
-For each zone (``location``) reports: stock (listing count), average
-price per m², average total price, average size (m²), and the % variation
-vs. the previous scraped snapshot.
-"""
-
-import csv
-import glob
-import json
+#!/usr/bin/env python3
+import pandas as pd
 import os
-import statistics
-from collections import defaultdict
-from datetime import datetime
-from typing import Any, Dict, List, Optional
-
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import letter
-from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.lib.units import inch
-from reportlab.platypus import (
-    Paragraph,
-    SimpleDocTemplate,
-    Spacer,
-    Table,
-    TableStyle,
-)
-
-
-def load_records(data_dir: str = "data") -> List[Dict[str, Any]]:
-    """Load all scraped property records from CSV/JSON files in data_dir."""
-    records: List[Dict[str, Any]] = []
-    for path in sorted(glob.glob(os.path.join(data_dir, "properties_*.csv"))):
-        with open(path, newline="", encoding="utf-8") as f:
-            records.extend(csv.DictReader(f))
-    for path in sorted(glob.glob(os.path.join(data_dir, "properties_*.json"))):
-        with open(path, encoding="utf-8") as f:
-            data = json.load(f)
-            if isinstance(data, list):
-                records.extend(data)
-    return records
-
-
-def load_file(filepath: str) -> List[Dict[str, Any]]:
-    """Load scraped property records from a single CSV or JSON file."""
-    records: List[Dict[str, Any]] = []
-    if filepath.endswith(".csv"):
-        with open(filepath, newline="", encoding="utf-8") as f:
-            records.extend(csv.DictReader(f))
-    elif filepath.endswith(".json"):
-        with open(filepath, encoding="utf-8") as f:
-            data = json.load(f)
-            if isinstance(data, list):
-                records.extend(data)
-    return records
-
-
-def _to_float(value: Any) -> Optional[float]:
-    if value in (None, ""):
-        return None
-    try:
-        # Remove currency symbols and commas before converting to float
-        if isinstance(value, str):
-            # Remove $ and commas
-            clean_value = value.replace('$', '').replace(',', '').strip()
-            return float(clean_value)
-        return float(value)
-    except (TypeError, ValueError):
-        return None
-
-
-def _snapshot_date(record: Dict[str, Any]) -> Optional[str]:
-    scraped_at = record.get("scraped_at")
-    if not scraped_at:
-        return None
-    return str(scraped_at)[:10]  # YYYY-MM-DD
-
+from typing import Dict, List, Any
+import numpy as np
 
 def build_zone_stats(records: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
-    """
-    Group records by zone (``location``) and compute, per zone:
-      - stock: number of listings
-      - avg_price: mean of price across listings that have it
-      - avg_price_per_m2: mean of price_per_m2 across listings that have it
-      - avg_size: mean of m2 across listings that have it
-      - variation_pct: % change in avg_price_per_m2 between the two most
-        recent snapshot dates for that zone (None if fewer than 2 dates)
-    """
-    by_zone: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
-    for r in records:
-        zone = r.get("location") or "Sin especificar"
-        by_zone[zone].append(r)
-
-    stats: Dict[str, Dict[str, Any]] = {}
-    for zone, rows in by_zone.items():
-        prices = [p for p in (_to_float(r.get("price")) for r in rows) if p is not None]
-        avg_price = round(statistics.mean(prices), 2) if prices else None
-
-        prices_m2 = [p for p in (_to_float(r.get("price_per_m2")) for r in rows) if p is not None]
-        avg_price_per_m2 = round(statistics.median(prices_m2), 2) if prices_m2 else None
-
-        sizes = [s for s in (_to_float(r.get("m2")) for r in rows) if s is not None]
-        avg_size = round(statistics.mean(sizes), 2) if sizes else None
-
-        by_date: Dict[str, List[float]] = defaultdict(list)
-        for r in rows:
-            date = _snapshot_date(r)
-            price = _to_float(r.get("price_per_m2"))
-            if date and price is not None:
-                by_date[date].append(price)
-
-        variation_pct = None
-        dates = sorted(by_date)
-        if len(dates) >= 2:
-            prev_avg = statistics.mean(by_date[dates[-2]])
-            last_avg = statistics.mean(by_date[dates[-1]])
-            if prev_avg:
-                variation_pct = round((last_avg - prev_avg) / prev_avg * 100, 2)
-
-        stats[zone] = {
-            "stock": len(rows),
-            "avg_price": avg_price,
-            "avg_price_per_m2": avg_price_per_m2,
-            "avg_size": avg_size,
-            "variation_pct": variation_pct,
+    if not records:
+        return {}
+    
+    df = pd.DataFrame(records)
+    
+    # Asegurar que 'location' exista, usando un valor por defecto
+    if 'location' not in df.columns:
+        df['location'] = 'Sin especificar'
+    else:
+        df['location'] = df['location'].fillna('Sin especificar')
+    
+    # Asegurar que 'title' exista para contar el stock
+    if 'title' not in df.columns:
+        df['title'] = ''
+    else:
+        df['title'] = df['title'].fillna('')
+    
+    # Limpiar y convertir precios
+    if 'price_per_m2' not in df.columns:
+        df['price_per_m2'] = None
+    df['price_per_m2'] = pd.to_numeric(df['price_per_m2'].replace(r'[\$,]', '', regex=True), errors='coerce')
+    
+    # Convertir 'scraped_at' a datetime
+    if 'scraped_at' not in df.columns:
+        df['scraped_at'] = None
+    df['scraped_at'] = pd.to_datetime(df['scraped_at'], errors='coerce')
+    
+    # Agrupar y calcular estadísticas
+    grouped = df.groupby('location').agg({
+        'title': 'count',
+        'price_per_m2': 'mean'
+    }).rename(columns={'title': 'stock', 'price_per_m2': 'avg_price_per_m2'})
+    
+    # Calcular variación de precios por zona
+    variation_results = {}
+    
+    for location, group in df.groupby('location'):
+        if len(group) >= 2:
+            # Obtener las dos primeras fechas únicas
+            dates = sorted(group['scraped_at'].dt.date.unique())
+            if len(dates) >= 2:
+                first_date = dates[0]
+                second_date = dates[1]
+                
+                # Obtener precios para las dos fechas
+                first_price = group[group['scraped_at'].dt.date == first_date]['price_per_m2'].mean()
+                second_price = group[group['scraped_at'].dt.date == second_date]['price_per_m2'].mean()
+                
+                if pd.notna(first_price) and pd.notna(second_price):
+                    variation = ((second_price - first_price) / first_price) * 100
+                    variation_results[location] = variation
+                else:
+                    variation_results[location] = None
+            else:
+                variation_results[location] = None
+        else:
+            variation_results[location] = None
+    
+    # Convertir a diccionario con la estructura esperada
+    zone_stats = {}
+    for location, stats in grouped.iterrows():
+        zone_stats[location] = {
+            'stock': int(stats['stock']),
+            'avg_price_per_m2': float(stats['avg_price_per_m2']) if pd.notna(stats['avg_price_per_m2']) else None,
+            'variation_pct': variation_results.get(location, None)
         }
-    return stats
+    return zone_stats
 
+def load_records(data_dir: str) -> List[Dict[str, Any]]:
+    records = []
+    for file_path in os.listdir(data_dir):
+        file = os.path.join(data_dir, file_path)
+        if file_path.endswith('.csv'):
+            df = pd.read_csv(file)
+            for _, row in df.iterrows():
+                records.append({
+                    'location': row.get('location', 'Sin especificar'),
+                    'price_per_m2': row.get('price_per_m2', '0'),
+                    'scraped_at': row.get('scraped_at', None),
+                    'title': row.get('title', '')
+                })
+        elif file_path.endswith('.json'):
+            with open(file, 'r') as f:
+                data = pd.read_json(f)
+                for _, row in data.iterrows():
+                    records.append({
+                        'location': row.get('location', 'Sin especificar'),
+                        'price_per_m2': row.get('price_per_m2', '0'),
+                        'scraped_at': row.get('scraped_at', None),
+                        'title': row.get('title', '')
+                    })
+    return records
 
-def generate_pdf(
-    zone_stats: Dict[str, Dict[str, Any]],
-    output_path: str = "Real_Estate_Report.pdf",
-) -> str:
-    """Render zone_stats into a PDF market report. Returns the output path."""
+def generate_pdf(zone_stats: Dict[str, Dict[str, Any]], output_path: str) -> str:
+    from reportlab.lib.pagesizes import letter
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet
+    
     doc = SimpleDocTemplate(output_path, pagesize=letter)
     styles = getSampleStyleSheet()
-    story = [
-        Paragraph("Informe de Mercado Inmobiliario", styles["Title"]),
-        Paragraph(f"Generado el {datetime.now().strftime('%Y-%m-%d')}", styles["Normal"]),
-        Spacer(1, 0.3 * inch),
-    ]
-
-    # Resumen ejecutivo
-    total_properties = sum(s["stock"] for s in zone_stats.values())
-    total_zones = len(zone_stats)
-    all_prices = [s["avg_price"] for s in zone_stats.values() if s["avg_price"] is not None]
-    overall_avg_price = round(statistics.mean(all_prices), 2) if all_prices else None
-
-    story.append(Paragraph("Resumen Ejecutivo", styles["Heading2"]))
-    story.append(Spacer(1, 0.1 * inch))
-    if overall_avg_price is not None:
-        summary_text = f"Se analizaron <b>{total_properties}</b> propiedades en <b>{total_zones}</b> zonas. El precio promedio general es <b>${overall_avg_price:,.2f}</b>."
-    else:
-        summary_text = f"Se analizaron <b>{total_properties}</b> propiedades en <b>{total_zones}</b> zonas. No hay datos de precio para calcular el promedio general."
-    story.append(Paragraph(summary_text, styles["Normal"]))
-    story.append(Paragraph(summary_text, styles["Normal"]))
-    story.append(Spacer(1, 0.3 * inch))
-
-    # Tabla detallada
-    header = ["Zona", "Stock", "Precio prom.", "Precio/m² prom.", "Tamaño prom. (m²)", "Variación"]
-    rows = [header]
-    for zone in sorted(zone_stats, key=lambda z: zone_stats[z]["stock"], reverse=True):
-        s = zone_stats[zone]
-        price = f"${s['avg_price']:,.2f}" if s["avg_price"] is not None else "N/D"
-        price_m2 = f"${s['avg_price_per_m2']:,.2f}" if s["avg_price_per_m2"] is not None else "N/D"
-        size = f"{s['avg_size']:,.2f}" if s["avg_size"] is not None else "N/D"
-        variation = f"{s['variation_pct']:+.2f}%" if s["variation_pct"] is not None else "N/D"
-        rows.append([zone, str(s["stock"]), price, price_m2, size, variation])
-
-    # Anchos ajustados para 6 columnas
-    table = Table(rows, colWidths=[1.5 * inch, 0.6 * inch, 1.2 * inch, 1.3 * inch, 1.0 * inch, 1.0 * inch])
-    table.setStyle(
-        TableStyle(
-            [
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2c3e50")),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f5f5f5")]),
-                ("ALIGN", (1, 0), (-1, -1), "CENTER"),
-                ("FONTSIZE", (0, 0), (-1, -1), 10),
-            ]
-        )
-    )
-    story.append(table)
-    story.append(Spacer(1, 0.3 * inch))
+    story = []
     
-    # Construcción del documento
+    # Título del informe
+    story.append(Paragraph("Informe de Mercado Inmobiliario", styles["Title"]))
+    
+    # Tabla de datos
+    table_data = [
+        ['Zona', 'Precio Medio por m²', 'Stock de Propiedades', 'Variación (%)']
+    ]
+    
+    for location, stats in zone_stats.items():
+        avg_price = stats['avg_price_per_m2']
+        variation = stats['variation_pct']
+        table_data.append([
+            location,
+            f"${avg_price:.2f}" if avg_price is not None else "N/A",
+            stats['stock'],
+            f"{variation:.1f}%" if variation is not None else "N/A"
+        ])
+    
+    table = Table(table_data)
+    table_style = TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 14),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+    ])
+    table.setStyle(table_style)
+    story.append(table)
+    
     doc.build(story)
     return output_path
+
+if __name__ == "__main__":
+    records = load_records("data")
+    zone_stats = build_zone_stats(records)
+    generate_pdf(zone_stats, "reports/informe_market_20260928.pdf")
