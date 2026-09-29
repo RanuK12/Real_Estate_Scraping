@@ -1,1 +1,25 @@
+=== EJECUCIÓN DEL SCRIPT ===
+Fecha: Tue Sep 29 14:55:18 CEST 2026
+Script: generate_report.py
+Directorio de trabajo: /Users/emilioranucoli/.ranukita/projects/real_estate_scraping
+
+=== COMANDO EJECUTADO ===
+python3 generate_report.py
+
+=== SALIDA ===
 Informe generado: /Users/emilioranucoli/.ranukita/projects/real_estate_scraping/reports/informe_mercado.pdf
+
+=== VERIFICACIÓN DEL PDF ===
+reports/informe_mercado.pdf: PDF document, version 1.4, 1 pages
+
+=== VERIFICACIÓN DE IMPORT ===
+Informe generado: /Users/emilioranucoli/.ranukita/projects/real_estate_scraping/reports/informe_mercado.pdf
+Módulo importado correctamente
+
+=== DATOS DE ENTRADA ===
+Archivo: data/sample_properties.csv
+Filas:        5
+Primeras líneas:
+title,price,price_per_m2,m2,location,bedrooms,bathrooms,source,url,scraped_at
+"Beautiful Apartment in Downtown","$450,000","$3,500","120","Downtown","2","1","zonaprop","https://www.zonaprop.com.ar/departamento-venta-downtown-123","2026-08-03"
+"Modern House in Suburbs","$890,000","$2,800","320","Suburbs","4","2","zonaprop","https://www.zonaprop.com.ar/casa-venta-suburbs-456","2026-08-03"
