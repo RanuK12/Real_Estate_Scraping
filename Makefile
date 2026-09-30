@@ -32,7 +32,7 @@ run-json:
 
 # Build the per-zone market report PDF from data already scraped
 report:
-	real-estate-report --data-dir data --output Real_Estate_Report.pdf
+	@source .venv/bin/activate && python report_generator.py
 
 # Run all checks before pushing
 ci: lint test
