@@ -1,0 +1,10 @@
+Comando ejecutado: python3 report_generator.py
+Salida:
+PDF generado: /Users/emilioranucoli/.ranukita/projects/real_estate_scraping/reports/market_report_2026-09-30.pdf
+
+Verificación con pdftotext:
+Informe de mercado – 2026-09-30
+Centro: 5 activos, precio medio m2 = 5433 USD
+Norte: 5 activos, precio medio m2 = 4719 USD
+Sur: 5 activos, precio medio m2 = 3775 USD
+Este: 5 activos, precio medio m2 = 4446 USD

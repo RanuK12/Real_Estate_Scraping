@@ -1,26 +1,31 @@
 import pandas as pd
+import sys
 import os
 from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER
+import matplotlib.pyplot as plt
 
-def build_zone_stats(records: list) -> dict:
-    if not records:
-        return {}
-    
-    df = pd.DataFrame(records)
+# Cargar datos
+path = '/Users/emilioranucoli/.ranukita/projects/real_estate_scraping/data/market_data.json'
+df = pd.read_json(path)
+
+# Calcular métricas
+if not df.empty:
     df['price_per_m2'] = df['precio'] / df['superficie']
     df['price_per_m2'] = pd.to_numeric(df['price_per_m2'], errors='coerce')
     df['fecha'] = pd.to_datetime(df['fecha'], errors='coerce')
     
+    # Agrupar por zona y calcular métricas
     zone_stats = {}
     for zona, group in df.groupby('zona'):
         stock = len(group)
         avg_price = group['price_per_m2'].mean()
         std_price = group['price_per_m2'].std()
         
+        # Calcular variación de precios si hay al menos 2 fechas distintas
         variation = None
         if len(group) >= 2:
             dates = sorted(group['fecha'].dt.date.unique())
@@ -40,13 +45,12 @@ def build_zone_stats(records: list) -> dict:
             'std_price_per_m2': float(std_price) if pd.notna(std_price) else None,
             'variation_pct': float(variation) if variation is not None else None
         }
-    return zone_stats
-
-def generate_report(zone_stats: dict, output_path: str) -> str:
-    doc = SimpleDocTemplate(output_path, pagesize=letter)
+    
+    # Generar PDF
+    doc = SimpleDocTemplate('/Users/emilioranucoli/.ranukita/projects/real_estate_scraping/report_test.pdf', pagesize=letter)
     styles = getSampleStyleSheet()
     
-    # Estilos personalizados
+    # Estilo para títulos
     title_style = ParagraphStyle(name='Title', fontSize=18, leading=22, spaceAfter=12, alignment=TA_CENTER, textColor=colors.Color(0.26, 0.69, 1.0))
     subtitle_style = ParagraphStyle(name='Subtitle', fontSize=14, leading=18, textColor=colors.Color(0.26, 0.69, 1.0))
     
@@ -57,7 +61,9 @@ def generate_report(zone_stats: dict, output_path: str) -> str:
     story.append(Spacer(1, 12))
     
     # Tabla de datos
-    table_data = [['Zona', 'Precio Medio por m²', 'Stock de Propiedades', 'Variación (%)', 'Desviación Estándar']]
+    table_data = [
+        ['Zona', 'Precio Medio por m²', 'Stock de Propiedades', 'Variación (%)', 'Desviación Estándar']
+    ]
     
     for zona, stats in zone_stats.items():
         avg_price = stats['avg_price_per_m2']
@@ -87,4 +93,6 @@ def generate_report(zone_stats: dict, output_path: str) -> str:
     story.append(table)
     
     doc.build(story)
-    return output_path
+    print("PDF generado con éxito en /Users/emilioranucoli/.ranukita/projects/real_estate_scraping/report_test.pdf")
+else:
+    print("No hay datos disponibles para generar el informe.")
