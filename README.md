@@ -166,6 +166,14 @@ real_estate_scraping/
 └── README.md
 ```
 
+## Generar informe de mercado
+
+```bash
+python3 generate_market_report.py
+```
+
+El PDF aparecerá en `reports/market_report.pdf`.
+
 ---
 
 ## Licencia
