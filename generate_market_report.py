@@ -4,6 +4,8 @@ from reportlab.lib.pagesizes import A4
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
+from collections import defaultdict
+from datetime import datetime
 
 data_path = os.path.expanduser("~/.ranukita/projects/real_estate_scraping/data/market_data.json")
 out_path = os.path.expanduser("~/.ranukita/projects/real_estate_scraping/reports/market_report.pdf")
@@ -15,24 +17,57 @@ def load_data():
 
 
 def aggregate(records):
-    from collections import defaultdict
-    zone = defaultdict(lambda: {"price_m2_sum": 0.0, "price_m2_cnt": 0, "stock": 0})
+    # Agrupar por zona y luego por mes
+    zone_data = defaultdict(lambda: defaultdict(list))  # zona -> mes -> lista de price_m2
+    
     for r in records:
         z = r.get("zona")
         if not z:
             continue
         precio = r.get("precio")
         superficie = r.get("superficie")
-        if precio is not None and superficie and superficie > 0:
+        fecha_str = r.get("fecha")
+        if precio is not None and superficie and superficie > 0 and fecha_str:
             price_m2 = precio / superficie
-            zone[z]["price_m2_sum"] += price_m2
-            zone[z]["price_m2_cnt"] += 1
-        zone[z]["stock"] += 1
+            # Extraer año-mes de la fecha (YYYY-MM-DD -> YYYY-MM)
+            try:
+                mes = fecha_str[:7]  # YYYY-MM
+                zone_data[z][mes].append(price_m2)
+            except:
+                continue
+    
     out = []
-    for z, v in zone.items():
-        avg = v["price_m2_sum"] / v["price_m2_cnt"] if v["price_m2_cnt"] else 0
-        out.append([z, f"${avg:.2f}", v["stock"], ""])  # Variación placeholder
-    out.sort(key=lambda x: x[0])
+    for zona, meses in zone_data.items():
+        # Ordenar meses cronológicamente
+        sorted_meses = sorted(meses.keys())
+        if not sorted_meses:
+            continue
+            
+        # Calcular promedio del mes más reciente
+        latest_mes = sorted_meses[-1]
+        latest_prices = meses[latest_mes]
+        avg_latest = sum(latest_prices) / len(latest_prices) if latest_prices else 0
+        
+        # Calcular variación respecto al mes anterior si existe
+        variacion = 0.0
+        if len(sorted_meses) >= 2:
+            prev_mes = sorted_meses[-2]
+            prev_prices = meses[prev_mes]
+            avg_prev = sum(prev_prices) / len(prev_prices) if prev_prices else 0
+            if avg_prev > 0:
+                variacion = ((avg_latest - avg_prev) / avg_prev) * 100
+        
+        # Calcular stock total (propiedades en todos los meses)
+        total_stock = sum(len(prices) for prices in meses.values())
+        
+        out.append([
+            zona,
+            f"${avg_latest:.2f}",
+            total_stock,
+            f"{variacion:+.1f}%"
+        ])
+    
+    out.sort(key=lambda x: x[0])  # Ordenar alfabéticamente por zona
     return out
 
 
