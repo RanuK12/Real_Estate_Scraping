@@ -1,0 +1,29 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+table{width:100%;border-collapse:collapse;}
+th,td{border:1px solid #ddd;padding:8px;text-align:left;}
+th{background:#f4f4f4;}
+</style>
+</head>
+<body>
+<h1>Informe de Mercado Inmobiliario</h1>
+<table>
+<thead>
+<tr><th>Zona</th><th>Precio m² (prom)</th><th>Stock</th><th>Variación %</th></tr>
+</thead>
+<tbody>
+{% for row in tabla %}
+<tr>
+<td>{{ row.zona }}</td>
+<td>{{ "%.2f"|format(row.precio_m2_mean) }}</td>
+<td>{{ row.stock }}</td>
+<td>{{ "%.2f"|format(row.variacion) }}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</body>
+</html>
