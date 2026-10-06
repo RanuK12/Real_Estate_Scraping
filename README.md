@@ -168,11 +168,31 @@ real_estate_scraping/
 
 ## Generar informe de mercado
 
+El proyecto incluye un script para generar un informe PDF de mercado a partir de los datos scrapeados.
+
+### Requisitos adicionales
+
 ```bash
-python3 generate_market_report.py
+pip install pandas matplotlib seaborn reportlab
 ```
 
-El PDF aparecerá en `reports/market_report.pdf`.
+### Uso
+
+```bash
+# Generar informe con datos por defecto
+python3 -m src.report_generator --data data/market_data.json --out market_report.pdf
+
+# Con archivo de datos personalizado
+python3 -m src.report_generator --data data/tus_datos.json --out reporte_personalizado.pdf
+```
+
+El PDF incluye:
+- Tabla con precio promedio/mínimo/máximo por m² por zona
+- Cantidad de propiedades por zona
+- Fecha de última actualización
+- Gráfico de barras con precio promedio por m² por zona
+
+El PDF se genera en la ruta especificada con `--out`.
 
 ---
 
