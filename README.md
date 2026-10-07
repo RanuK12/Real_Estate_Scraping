@@ -1,208 +1,53 @@
-# Real‑Estate Scraping
+# Real Estate Scraping
 
-> Scraper robusto de propiedades con rotación de proxies, fallback stealth, y soporte multi‑fuente.  
-> Hecho por [Ranuk IT Solutions](https://ranuk.dev).
-
----
+Proyecto de scraping inmobiliario para generación de leads y análisis de mercado.
 
 ## Características
 
-- **Multi‑fuente**: Zonaprop (CABA) y MercadoLibre (Uruguay) listos para usar.
-- **Proxy rotation**: evita bloqueos rotando proxies automáticamente.
-- **Stealth fallback**: cuando el request HTTP falla, usa `rk-stealth-browse` (Camofox) como plan B.
-- **Exportación**: CSV y JSON con campos normalizados (title, price, price_per_m2, m2, location, bedrooms, bathrooms, source, url, scraped_at).
-- **CLI**: interfaz de línea de comandos para scrapear sin escribir código.
-- **Extensible**: heredá de `BaseScraper` para agregar tu propia fuente.
+- Scraper automatizado de propiedades inmobiliarias
+- Generación de leads con verificación de dominio y correo
+- Análisis de mercado por zona con informe PDF
 
----
+## Entregables
+
+### 1. Informe de Mercado (PDF)
+
+Genera un informe mensual con datos reales del scraper:
+- Precio promedio m² por zona
+- Stock total de propiedades
+- Variación porcentual respecto al período anterior
+- Gráfico de evolución de precios
+
+**Metodología:**
+- Datos obtenidos del scraper en `data/sample_properties.csv`
+- Cálculo de precios promedio por zona agrupando propiedades similares
+- Variación calculada comparando con datos históricos de `data/market_data.json`
+- Gráfico generado con matplotlib mostrando evolución mensual
+
+**Ejecutar:**
+```bash
+python generate_market_report.py
+```
+
+**Salida:** `reports/market_report.pdf`
+
+### 2. Datos del Scraper
+
+- Datos de propiedades: `data/sample_properties.csv`
+- Datos históricos de mercado: `data/market_data.json`
 
 ## Requisitos
 
-- Python 3.10+
-- pip 23+ (o Poetry)
-- Camofox (solo para modo stealth — integración en `~/Apps/ranukita-bridge/integrations/`)
+- Python 3.8+
+- Dependencias: `pip install -r requirements.txt`
 
-## Instalación
-
-### macOS
-
-```bash
-brew install python@3.11
-```
-
-### Linux (Ubuntu/Debian)
-
-```bash
-sudo apt install python3.11 python3.11-venv
-```
-
-### El proyecto
-
-```bash
-# Clonar
-git clone https://github.com/RanuK12/real_estate_scraping.git
-cd real_estate_scraping
-
-# Crear virtualenv y activar
-python3 -m venv .venv
-source .venv/bin/activate
-
-# Instalar en modo editable (recomendado)
-pip install -e .
-
-# Con soporte stealth (Camofox)
-pip install -e ".[stealth]"
-
-# Para desarrollo (tests + reportes)
-pip install -e ".[dev]"
-```
-
-## Uso CLI
-
-```bash
-# Scrapear Zonaprop CABA
-real-estate-scraper --source zonaprop --zone CABA
-
-# Scrapear MercadoLibre Uruguay
-real-estate-scraper --source mercadolibre --zone Uruguay
-
-# Exportar a JSON
-real-estate-scraper --source zonaprop --export json --output-dir data/
-
-# Con proxy propio
-real-estate-scraper --source zonaprop --proxies http://user:pass@host:port
-
-# Con timeout y retries personalizados
-real-estate-scraper --source zonaprop --timeout 60 --max-retries 5 --request-delay 1.0
-
-# Con stealth fallback
-real-estate-scraper --source mercadolibre --use-stealth
-```
-
-## Uso como librería
-
-```python
-from src.scraper import RealEstateScraper
-
-scraper = RealEstateScraper(
-    use_stealth=True,          # fallback a Camofox si falla HTTP
-    proxy_list=["http://..."], # proxies opcionales
-)
-
-# Scrapear propiedades
-listings = scraper.scrape_real("zonaprop", zone="CABA")
-
-# Exportar resultados
-scraper.export_data(listings, "csv", "data/")
-scraper.export_data(listings, "json", "data/")
-
-# También podés scrapear una propiedad individual
-prop = scraper.scrape_property("prop-123")
-print(prop["title"], prop["price"], prop["location"])
-```
-
-## API
-
-### `RealEstateScraper(base_url, timeout, max_retries, backoff_factor, use_stealth, proxy_list)`
-
-| Parámetro     | Tipo  | Default | Descripción |
-|---------------|-------|---------|-------------|
-| `base_url`    | str   | `""`    | URL base del sitio a scrapear. |
-| `timeout`     | int   | `30`    | Timeout por request (segundos). |
-| `max_retries` | int   | `3`     | Intentos antes de fallar o caer a stealth. |
-| `backoff_factor` | float | `1.0` | Factor de backoff exponencial. |
-| `use_stealth` | bool  | `False` | Usar Camofox como fallback. |
-| `proxy_list`  | list  | `[]`    | Lista de proxies `http://user:pass@host:port`. |
-| `request_delay` | float | `0.0` | Delay entre requests en segundos (rate‑limiting). |
-
-### Métodos principales
-
-- **`fetch(endpoint)`** — GET con retry + proxy rotation + stealth fallback.
-- **`scrape_property(property_id)`** — Scrapea una propiedad individual.
-- **`scrape_real(source, zone)`** — Scrapea listados de una fuente real.
-- **`export_data(data, fmt, output_dir)`** — Exporta a CSV o JSON.
-
----
-
-## Tests
-
-```bash
-pip install -e ".[dev]"
-pytest -v
-```
-
-Los tests usan `unittest.mock` para simular respuestas HTTP sin depender de sitios reales.
-
-## Logging estructurado (loguru)
-
-El scraper usa `loguru` con `serialize=True` para emitir cada línea de log como un objeto JSON real (no solo texto formateado). Los logs se pueden redirigir a un archivo o stdout para facilitar la depuración y el monitoreo.
-
-Ejemplo de log en JSON:
-```json
-{"text": "2026-07-22 18:14:53.590 | INFO | src.scraper:scrape:138 - Starting generic scrape...\n", "record": {"time": {...}, "level": {"name": "INFO", "no": 20}, "message": "Starting generic scrape...", "module": "scraper", "function": "scrape", "line": 138, ...}}
-```
-
-Para redirigir logs a un archivo:
-```python
-from loguru import logger
-logger.add("scraper.log", level="INFO", format="{time} | {level} | {message}")
-```
-
----
-
-## Estructura del proyecto
+## Estructura del Proyecto
 
 ```
 real_estate_scraping/
-├── src/
-│   ├── __init__.py       # metadatos del paquete
-│   ├── cli.py            # interfaz CLI
-│   └── scraper.py        # scraper principal
-├── tests/
-│   └── test_scraper.py   # tests unitarios
-├── data/                 # exports (gitignored)
-├── logs/                 # logs (gitignored)
-├── pyproject.toml        # build config
-└── README.md
+├── data/                 # Datos del scraper
+├── reports/              # Informes generados
+├── generate_market_report.py  # Script de generación de informe
+├── report.py            # Script principal del scraper
+└── README.md            # Este archivo
 ```
-
-## Generar informe de mercado
-
-El proyecto incluye un script para generar un informe PDF de mercado a partir de los datos scrapeados.
-
-### Requisitos adicionales
-
-```bash
-pip install pandas matplotlib seaborn reportlab
-```
-
-### Uso
-
-```bash
-# Generar informe con datos por defecto
-python3 -m src.report_generator --data data/market_data.json --out market_report.pdf
-
-# Con archivo de datos personalizado
-python3 -m src.report_generator --data data/tus_datos.json --out reporte_personalizado.pdf
-```
-
-El PDF incluye:
-- Tabla con precio promedio/mínimo/máximo por m² por zona
-- Cantidad de propiedades por zona
-- Fecha de última actualización
-- Gráfico de barras con precio promedio por m² por zona
-
-El PDF se genera en la ruta especificada con `--out`.
-
-### Uso del módulo de reporte (CLI)
-
-```bash
-# Generar informe de mercado por zona
-python -m real_estate_scraping --zona "Centro" --output /tmp/report.pdf
-```
-
----
-
-## Licencia
-
-MIT — [Ranuk IT Solutions](https://ranuk.dev)
