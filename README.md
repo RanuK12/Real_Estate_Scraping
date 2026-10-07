@@ -194,6 +194,13 @@ El PDF incluye:
 
 El PDF se genera en la ruta especificada con `--out`.
 
+### Uso del módulo de reporte (CLI)
+
+```bash
+# Generar informe de mercado por zona
+python -m real_estate_scraping --zona "Centro" --output /tmp/report.pdf
+```
+
 ---
 
 ## Licencia
