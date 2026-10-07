@@ -1,75 +1,66 @@
 #!/usr/bin/env python3
 import pandas as pd
-import glob
-import os
-from reportlab.lib.pagesizes import A4
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-from reportlab.lib import colors
-from reportlab.lib.styles import getSampleStyleSheet
+from fpdf import FPDF
+from pathlib import Path
 
-# Find all CSV files in data/
-csv_files = sorted(glob.glob("/Users/emilioranucoli/.ranukita/projects/real_estate_scraping/data/*.csv"))
-if not csv_files:
-    raise FileNotFoundError("No CSV files found in data/")
+def load_data():
+    try:
+        df = pd.read_json('output/leads.json', orient='records')
+        return df
+    except FileNotFoundError:
+        raise FileNotFoundError("El archivo output/leads.json no existe. Ejecutá el scraper primero.")
 
-# Load and concatenate
-df_list = []
-for f in csv_files:
-    df = pd.read_csv(f)
-    # Clean price_per_m2: remove $ and commas, convert to float
-    df['price_per_m2_clean'] = df['price_per_m2'].replace({'\\$': '', ',': ''}, regex=True).astype(float)
-    # Ensure scraped_at is datetime
-    df['scraped_at'] = pd.to_datetime(df['scraped_at'])
-    df_list.append(df)
+def enrich_dataframe(df):
+    """Prepara el DataFrame con las columnas necesarias y calcula precio_m2."""
+    df['fecha'] = pd.to_datetime(df['fecha'], errors='coerce')
+    df['precio_m2'] = df['precio'] / df['superficie']
+    return df
 
-df = pd.concat(df_list, ignore_index=True)
+def calculate_metrics(df):
+    """Calcula métricas clave por zona."""
+    df['mes'] = df['fecha'].dt.to_period('M')
+    
+    # Agrupar por zona y mes para calcular variación mensual
+    df['variacion'] = df.groupby(['zona', 'mes'])['precio_m2'].pct_change().fillna(0) * 100
+    
+    # Obtener la última variación mensual por zona
+    df_mensual = df.groupby(['zona', 'mes'])['precio_m2'].last().unstack(fill_value=0)
+    
+    # Calcular métricas por zona
+    report = df.groupby('zona').agg(
+        precio_promedio_m2=('precio_m2', 'mean'),
+        stock=('id', 'count')
+    ).reset_index()
+    
+    # Asignar la última variación mensual a cada zona
+    for zona in report['zona']:
+        report.loc[report['zona'] == zona, 'variacion'] = df_mensual.loc[zona, df_mensual.columns[-1]]
+    
+    return report
 
-# Group by location (zona)
-grouped = df.groupby('location').agg(
-    precio_m2_prom=('price_per_m2_clean', 'mean'),
-    stock_total=('price_per_m2_clean', 'count'),  # number of listings
-).reset_index()
+def generate_pdf(report):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Helvetica", size=12)
+    pdf.cell(200, 10, txt="INFORME DE MERCADO INMOBILIARIO", ln=1, align="C")
 
-# Compute variation per location
-def compute_variation(subdf):
-    subdf = subdf.sort_values('scraped_at')
-    if len(subdf) < 2:
-        return 0.0
-    first = subdf.iloc[0]['price_per_m2_clean']
-    last = subdf.iloc[-1]['price_per_m2_clean']
-    if first == 0:
-        return 0.0
-    return (last - first) / first * 100.0
+    for _, row in report.iterrows():
+        pdf.cell(200, 10, txt=f"\nZona: {row['zona']}", ln=1)
+        pdf.cell(200, 10, txt=f"Precio promedio m²: ${row['precio_promedio_m2']:.2f}", ln=1)
+        pdf.cell(200, 10, txt=f"Stock disponible: {row['stock']} unidades", ln=1)
+        pdf.cell(200, 10, txt=f"Variación mensual: {row['variacion']:.1f}%", ln=1)
 
-variation_series = df.groupby('location').apply(compute_variation)
-variation_series.name = 'variacion_pct'
-grouped = grouped.merge(variation_series, left_on='location', right_index=True)
+    pdf.output("report/informe_mercado.pdf")
 
-# Prepare data for PDF
-data = [["Zona","Precio m2 promedio","Stock total","Variación %"]]
-for _, row in grouped.iterrows():
-    data.append([
-        row['location'],
-        f"${row['precio_m2_prom']:,.2f}",
-        int(row['stock_total']),
-        f"{row['variacion_pct']:.2f}%"
-    ])
+def main():
+    try:
+        df = load_data()
+        df = enrich_dataframe(df)
+        report = calculate_metrics(df)
+        generate_pdf(report)
+        print("PDF generado en: report/informe_mercado.pdf")
+    except Exception as e:
+        print(f"Error: {e}")
 
-# Build PDF
-doc = SimpleDocTemplate("informe_mercado.pdf", pagesize=A4)
-styles = getSampleStyleSheet()
-elements = [Paragraph("Informe de Mercado Inmobiliario", styles['Title']), Spacer(1,12)]
-
-table = Table(data, hAlign='LEFT')
-table.setStyle(TableStyle([
-    ('BACKGROUND', (0,0), (-1,0), colors.grey),
-    ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
-    ('GRID', (0,0), (-1,-1), 0.5, colors.black),
-    ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-    ('ALIGN', (0,0), (-1,-1), 'CENTER'),
-    ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-]))
-elements.append(table)
-doc.build(elements)
-
-print("Reporte generado: informe_mercado.pdf")
+if __name__ == "__main__":
+    main()
